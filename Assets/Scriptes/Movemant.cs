@@ -2,37 +2,37 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    // Переменные для движения
+    // РџРµСЂРµРјРµРЅРЅС‹Рµ РґР»СЏ РґРІРёР¶РµРЅРёСЏ
     public float speed = 5f;
     public float jumpForce = 10f;
     public int maxJumps = 2;
     private int jumpCount;
 
-    // Переменные для приседания
+    // РџРµСЂРµРјРµРЅРЅС‹Рµ РґР»СЏ РїСЂРёСЃРµРґР°РЅРёСЏ
     private bool isCrouching = false;
 
-    // Переменные для рывка
+    // РџРµСЂРµРјРµРЅРЅС‹Рµ РґР»СЏ СЂС‹РІРєР°
     public float dashDistance = 5f;
     public float dashCooldown = 1f;
     private bool canDash = true;
 
-    // Переменные для подката
+    // РџРµСЂРµРјРµРЅРЅС‹Рµ РґР»СЏ РїРѕРґРєР°С‚Р°
     public float slideSpeed = 8f;
     public float slideDuration = 0.5f;
     private bool isSliding = false;
 
-    // Переменные для стены
+    // РџРµСЂРµРјРµРЅРЅС‹Рµ РґР»СЏ СЃС‚РµРЅС‹
     public float wallSlideSpeed = 2f;
     public float wallStickTime = 0.5f;
     private bool isTouchingWall;
     private bool isWallSliding;
     private bool canWallJump = true;
 
-    // Прочие компоненты
+    // РџСЂРѕС‡РёРµ РєРѕРјРїРѕРЅРµРЅС‚С‹
     private Rigidbody2D rb;
     private Animator animator;
 
-    // Слои для проверки
+    // РЎР»РѕРё РґР»СЏ РїСЂРѕРІРµСЂРєРё
     public LayerMask groundLayer;
     public LayerMask wallLayer;
 
@@ -44,17 +44,17 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // Проверяем, что персонаж не в состоянии подката
+        // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ РЅРµ РІ СЃРѕСЃС‚РѕСЏРЅРёРё РїРѕРґРєР°С‚Р°
         if (!isSliding && !isCrouching)
         {
-            // Бег
+            // Р‘РµРі
             float moveInput = Input.GetAxis("Horizontal");
             rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
 
-            // Анимация бега
+            // РђРЅРёРјР°С†РёСЏ Р±РµРіР°
             animator.SetFloat("Speed", Mathf.Abs(moveInput));
 
-            // Поворот персонажа
+            // РџРѕРІРѕСЂРѕС‚ РїРµСЂСЃРѕРЅР°Р¶Р°
             if (moveInput > 0)
             {
                 transform.localScale = new Vector3(1, 1, 1);
@@ -65,7 +65,7 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // Прыжок
+        // РџСЂС‹Р¶РѕРє
         if (Input.GetButtonDown("Jump") && (IsGrounded() || jumpCount < maxJumps))
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
@@ -73,19 +73,19 @@ public class PlayerController : MonoBehaviour
             animator.SetTrigger("Jump");
         }
 
-        // Сброс прыжков при касании земли
+        // РЎР±СЂРѕСЃ РїСЂС‹Р¶РєРѕРІ РїСЂРё РєР°СЃР°РЅРёРё Р·РµРјР»Рё
         if (IsGrounded())
         {
             jumpCount = 0;
         }
 
-        // Приседание
+        // РџСЂРёСЃРµРґР°РЅРёРµ
         if (Input.GetKey(KeyCode.S) && IsGrounded())
         {
             if (!isCrouching)
             {
                 isCrouching = true;
-                rb.velocity = Vector2.zero; // Полная остановка
+                rb.velocity = Vector2.zero; // РџРѕР»РЅР°СЏ РѕСЃС‚Р°РЅРѕРІРєР°
                 animator.SetBool("Crouch", true);
             }
         }
@@ -95,13 +95,13 @@ public class PlayerController : MonoBehaviour
             animator.SetBool("Crouch", false);
         }
 
-        // Рывок
+        // Р С‹РІРѕРє
         if (Input.GetKeyDown(KeyCode.LeftShift) && canDash)
         {
             StartCoroutine(Dash(Input.GetAxis("Horizontal")));
         }
 
-        // Цепляние за стену
+        // Р¦РµРїР»СЏРЅРёРµ Р·Р° СЃС‚РµРЅСѓ
         isTouchingWall = IsTouchingWall();
         if (isTouchingWall && !IsGrounded() && Input.GetAxis("Horizontal") != 0)
         {
@@ -115,44 +115,44 @@ public class PlayerController : MonoBehaviour
             animator.SetBool("WallSlide", false);
         }
 
-        // Отпрыгивание от стены
+        // РћС‚РїСЂС‹РіРёРІР°РЅРёРµ РѕС‚ СЃС‚РµРЅС‹
         if (Input.GetButtonDown("Jump") && isWallSliding)
         {
             rb.velocity = new Vector2(-Mathf.Sign(transform.localScale.x) * speed, jumpForce);
         }
 
-        // Подкат
+        // РџРѕРґРєР°С‚
         if (Input.GetKeyDown(KeyCode.LeftControl) && !isSliding && IsGrounded())
         {
             StartCoroutine(Slide(Input.GetAxis("Horizontal")));
         }
     }
 
-    // Проверка на землю
+    // РџСЂРѕРІРµСЂРєР° РЅР° Р·РµРјР»СЋ
     private bool IsGrounded()
     {
         return Physics2D.OverlapCircle(transform.position, 0.1f, groundLayer);
     }
 
-    // Проверка на стену
+    // РџСЂРѕРІРµСЂРєР° РЅР° СЃС‚РµРЅСѓ
     private bool IsTouchingWall()
     {
         return Physics2D.OverlapCircle(transform.position, 0.1f, wallLayer);
     }
 
-    // Рывок
+    // Р С‹РІРѕРє
     private System.Collections.IEnumerator Dash(float moveInput)
     {
         canDash = false;
         Vector2 dashVector = new Vector2(moveInput * dashDistance, rb.velocity.y);
         rb.velocity = dashVector;
-        yield return new WaitForSeconds(0.1f); // Длительность рывка
-        rb.velocity = Vector2.zero; // Обнуление скорости
-        yield return new WaitForSeconds(dashCooldown); // Восстановление рывка
+        yield return new WaitForSeconds(0.1f); // Р”Р»РёС‚РµР»СЊРЅРѕСЃС‚СЊ СЂС‹РІРєР°
+        rb.velocity = Vector2.zero; // РћР±РЅСѓР»РµРЅРёРµ СЃРєРѕСЂРѕСЃС‚Рё
+        yield return new WaitForSeconds(dashCooldown); // Р’РѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ СЂС‹РІРєР°
         canDash = true;
     }
 
-    // Подкат
+    // РџРѕРґРєР°С‚
     private System.Collections.IEnumerator Slide(float moveInput)
     {
         isSliding = true;
