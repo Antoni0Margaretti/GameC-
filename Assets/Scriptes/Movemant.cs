@@ -9,10 +9,12 @@ public class PlayerController : MonoBehaviour
     private int jumpCount;
 
     // Переменные для стены
-    public float wallSlideSpeed = 2f;
+    public float wallHangTime = 0.5f;    // Время висения на стене
+    public float wallSlideSpeed = 2f;   // Скорость скольжения по стене
+    public float wallSlideAcceleration = 5f; // Ускорение при скольжении
     private bool isTouchingWall;
-    private bool isWallSliding;
-    private bool isHoldingWall;
+    private bool isHangingOnWall;
+    private bool isSlidingFromWall;
 
     // Прочие компоненты
     private Rigidbody2D rb;
@@ -30,27 +32,31 @@ public class PlayerController : MonoBehaviour
     {
         // Бег
         float moveInput = Input.GetAxis("Horizontal");
-        rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
+        if (!isHangingOnWall && !isSlidingFromWall) // Если персонаж не на стене, движение включено
+        {
+            rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
 
-        // Поворот персонажа
-        if (moveInput > 0)
-        {
-            transform.localScale = new Vector3(1, 1, 1);
-        }
-        else if (moveInput < 0)
-        {
-            transform.localScale = new Vector3(-1, 1, 1);
+            // Поворот персонажа
+            if (moveInput > 0)
+            {
+                transform.localScale = new Vector3(1, 1, 1);
+            }
+            else if (moveInput < 0)
+            {
+                transform.localScale = new Vector3(-1, 1, 1);
+            }
         }
 
         // Прыжок
-        if (Input.GetButtonDown("Jump") && (IsGrounded() || jumpCount < maxJumps || isHoldingWall))
+        if (Input.GetButtonDown("Jump") && (IsGrounded() || jumpCount < maxJumps || isHangingOnWall))
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
 
-            // Если персонаж держится за стену, сбрасываем стеновое удержание
-            if (isHoldingWall)
+            // Если персонаж висит на стене, отпускаем её
+            if (isHangingOnWall || isSlidingFromWall)
             {
-                isHoldingWall = false;
+                isHangingOnWall = false;
+                isSlidingFromWall = false;
             }
 
             jumpCount++;
@@ -62,17 +68,35 @@ public class PlayerController : MonoBehaviour
             jumpCount = 0;
         }
 
-        // Логика стены: скольжение и удержание
+        // Логика стены: цепляние, висение и скольжение
         isTouchingWall = IsTouchingWall();
-        if (isTouchingWall && !IsGrounded())
+        if (isTouchingWall && !IsGrounded() && moveInput != 0) // Проверка касания стены и направления
         {
-            isHoldingWall = true; // Персонаж автоматически держится за стену
-            rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed); // Замедленное скольжение
+            StartCoroutine(HangOnWall());
         }
-        else if (!isTouchingWall)
+        else if (isSlidingFromWall)
         {
-            isHoldingWall = false; // Отпускаем стену, если контакт потерян
+            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y + wallSlideAcceleration * Time.deltaTime);
         }
+
+        // Отцепление от стены при нажатии S
+        if (Input.GetKeyDown(KeyCode.S) && (isHangingOnWall || isSlidingFromWall))
+        {
+            isHangingOnWall = false;
+            isSlidingFromWall = false;
+        }
+    }
+
+    // Цепляние за стену
+    private System.Collections.IEnumerator HangOnWall()
+    {
+        isHangingOnWall = true;
+        rb.velocity = new Vector2(0, 0); // Персонаж полностью останавливается на стене
+        yield return new WaitForSeconds(wallHangTime); // Время висения на стене
+
+        isHangingOnWall = false;
+        isSlidingFromWall = true; // Персонаж начинает скользить
+        rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed); // Начальная скорость скольжения
     }
 
     // Проверка на землю
@@ -91,3 +115,4 @@ public class PlayerController : MonoBehaviour
         return Physics2D.OverlapCircle(position, radius, wallLayer);
     }
 }
+
