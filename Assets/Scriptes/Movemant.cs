@@ -25,7 +25,6 @@ public class PlayerController : MonoBehaviour
     public float wallHangTime = 0.5f;      // Время висения на стене
     public float wallSlideSpeed = 2f;     // Скорость скольжения по стене
     public float wallJumpForce = 10f;    // Сила прыжка от стены
-    public float wallSlideAcceleration = 0.5f; // Ускорение скольжения вниз
     private bool isTouchingWall;          // Проверка касания стены
     private bool isSlidingOnWall;         // Состояние скольжения по стене
     private float wallDetachCooldown = 0.1f; // Время между повторными цепляниями
@@ -53,14 +52,14 @@ public class PlayerController : MonoBehaviour
         {
             rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
 
-            // Поворот персонажа
+            // Поворот персонажа с сохранением размера
             if (moveInput > 0)
             {
-                transform.localScale = new Vector3(1, 1, 1);
+                transform.localScale = new Vector3(Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
             }
             else if (moveInput < 0)
             {
-                transform.localScale = new Vector3(-1, 1, 1);
+                transform.localScale = new Vector3(-Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
             }
         }
 
@@ -91,7 +90,7 @@ public class PlayerController : MonoBehaviour
         isTouchingWall = IsTouchingWall();
         if (isTouchingWall && !IsGrounded() && timeSinceDetached > wallDetachCooldown)
         {
-            StartWallSlide();
+            StartWallHang(); // Начало висения на стене
         }
 
         // Отмена скольжения при падении, если нажать S
@@ -127,10 +126,21 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Цепляние за стену
-    private void StartWallSlide()
+    // Цепляние за стену (висение)
+    private void StartWallHang()
     {
-        isSlidingOnWall = true;
+        if (!isSlidingOnWall) // Проверка, чтобы цепляние происходило только один раз
+        {
+            isSlidingOnWall = true;
+            rb.velocity = Vector2.zero; // Полная остановка при цеплянии
+            Invoke("BeginWallSlide", wallHangTime); // Через wallHangTime начнётся скольжение
+        }
+    }
+
+    // Начало скольжения
+    private void BeginWallSlide()
+    {
+        isSlidingOnWall = true; // Переход в состояние скольжения
         rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed); // Начальная скорость скольжения
     }
 
@@ -184,5 +194,3 @@ public class PlayerController : MonoBehaviour
         return Physics2D.OverlapCircle(position, radius, wallLayer);
     }
 }
-
-
