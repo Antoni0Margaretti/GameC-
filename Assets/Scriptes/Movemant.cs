@@ -8,13 +8,28 @@ public class PlayerController : MonoBehaviour
     public int maxJumps = 2;
     private int jumpCount;
 
+    // Переменные для рывка
+    public float dashDistance = 5f;
+    public float dashCooldown = 1f;
+    private bool canDash = true;
+
+    // Переменные для подката
+    public float slideSpeed = 8f;
+    public float slideDuration = 0.5f;
+    private bool isSliding = false;
+
+    // Переменные для приседания
+    private bool isCrouching = false;
+
     // Переменные для стены
-    public float wallHangTime = 0.5f;    // Время висения на стене
-    public float wallSlideSpeed = 2f;   // Скорость скольжения по стене
-    public float wallSlideAcceleration = 5f; // Ускорение при скольжении
-    private bool isTouchingWall;
-    private bool isHangingOnWall;
-    private bool isSlidingFromWall;
+    public float wallHangTime = 0.5f;      // Время висения на стене
+    public float wallSlideSpeed = 2f;     // Скорость скольжения по стене
+    public float wallJumpForce = 10f;    // Сила прыжка от стены
+    public float wallSlideAcceleration = 0.5f; // Ускорение скольжения вниз
+    private bool isTouchingWall;          // Проверка касания стены
+    private bool isSlidingOnWall;         // Состояние скольжения по стене
+    private float wallDetachCooldown = 0.1f; // Время между повторными цепляниями
+    private float timeSinceDetached;      // Время с момента отлипания от стены
 
     // Прочие компоненты
     private Rigidbody2D rb;
@@ -30,9 +45,11 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // Бег
+        timeSinceDetached += Time.deltaTime;
+
+        // Основное движение персонажа
         float moveInput = Input.GetAxis("Horizontal");
-        if (!isHangingOnWall && !isSlidingFromWall) // Если персонаж не на стене, движение включено
+        if (!isSlidingOnWall && !isSliding && !isCrouching)
         {
             rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
 
@@ -48,15 +65,16 @@ public class PlayerController : MonoBehaviour
         }
 
         // Прыжок
-        if (Input.GetButtonDown("Jump") && (IsGrounded() || jumpCount < maxJumps || isHangingOnWall))
+        if (Input.GetButtonDown("Jump") && (IsGrounded() || jumpCount < maxJumps || isSlidingOnWall))
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
 
-            // Если персонаж висит на стене, отпускаем её
-            if (isHangingOnWall || isSlidingFromWall)
+            // Если персонаж скользит по стене, прыжок отталкивает его
+            if (isSlidingOnWall)
             {
-                isHangingOnWall = false;
-                isSlidingFromWall = false;
+                rb.velocity = new Vector2(-Mathf.Sign(transform.localScale.x) * speed, wallJumpForce);
+                isSlidingOnWall = false;
+                timeSinceDetached = 0f;
             }
 
             jumpCount++;
@@ -65,38 +83,89 @@ public class PlayerController : MonoBehaviour
         // Сброс прыжков при касании земли
         if (IsGrounded())
         {
-            jumpCount = 0;
+            jumpCount = 0; // Обновление прыжков
+            isSlidingOnWall = false; // Скользящее состояние сбрасывается
         }
 
         // Логика стены: цепляние, висение и скольжение
         isTouchingWall = IsTouchingWall();
-        if (isTouchingWall && !IsGrounded() && moveInput != 0) // Проверка касания стены и направления
+        if (isTouchingWall && !IsGrounded() && timeSinceDetached > wallDetachCooldown)
         {
-            StartCoroutine(HangOnWall());
-        }
-        else if (isSlidingFromWall)
-        {
-            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y + wallSlideAcceleration * Time.deltaTime);
+            StartWallSlide();
         }
 
-        // Отцепление от стены при нажатии S
-        if (Input.GetKeyDown(KeyCode.S) && (isHangingOnWall || isSlidingFromWall))
+        // Отмена скольжения при падении, если нажать S
+        if (Input.GetKeyDown(KeyCode.S) && isSlidingOnWall)
         {
-            isHangingOnWall = false;
-            isSlidingFromWall = false;
+            StopWallSlide();
+        }
+
+        // Рывок
+        if (Input.GetKeyDown(KeyCode.LeftShift) && canDash)
+        {
+            StartCoroutine(Dash(moveInput));
+        }
+
+        // Подкат
+        if (Input.GetKeyDown(KeyCode.LeftControl) && !isSliding && IsGrounded())
+        {
+            StartCoroutine(Slide(moveInput));
+        }
+
+        // Приседание
+        if (Input.GetKey(KeyCode.S) && IsGrounded() && !isSliding && !isSlidingOnWall)
+        {
+            if (!isCrouching)
+            {
+                isCrouching = true;
+                rb.velocity = Vector2.zero; // Полная остановка
+            }
+        }
+        else if (isCrouching)
+        {
+            isCrouching = false;
         }
     }
 
     // Цепляние за стену
-    private System.Collections.IEnumerator HangOnWall()
+    private void StartWallSlide()
     {
-        isHangingOnWall = true;
-        rb.velocity = new Vector2(0, 0); // Персонаж полностью останавливается на стене
-        yield return new WaitForSeconds(wallHangTime); // Время висения на стене
-
-        isHangingOnWall = false;
-        isSlidingFromWall = true; // Персонаж начинает скользить
+        isSlidingOnWall = true;
         rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed); // Начальная скорость скольжения
+    }
+
+    private void StopWallSlide()
+    {
+        isSlidingOnWall = false;
+        timeSinceDetached = 0f; // Отсчёт времени для повторного цепляния
+    }
+
+    // Рывок
+    private System.Collections.IEnumerator Dash(float moveInput)
+    {
+        if (moveInput != 0 && canDash)
+        {
+            canDash = false;
+            Vector2 dashVector = new Vector2(Mathf.Sign(moveInput) * dashDistance, 0);
+            rb.velocity = dashVector;
+            yield return new WaitForSeconds(0.1f); // Длительность рывка
+            rb.velocity = new Vector2(0, rb.velocity.y); // Обнуление горизонтальной скорости
+            yield return new WaitForSeconds(dashCooldown); // Ожидание перед следующим рывком
+            canDash = true;
+        }
+    }
+
+    // Подкат
+    private System.Collections.IEnumerator Slide(float moveInput)
+    {
+        if (moveInput != 0 && IsGrounded())
+        {
+            isSliding = true;
+            rb.velocity = new Vector2(Mathf.Sign(moveInput) * slideSpeed, rb.velocity.y);
+            yield return new WaitForSeconds(slideDuration);
+            rb.velocity = Vector2.zero; // Полная остановка
+            isSliding = false;
+        }
     }
 
     // Проверка на землю
@@ -115,4 +184,5 @@ public class PlayerController : MonoBehaviour
         return Physics2D.OverlapCircle(position, radius, wallLayer);
     }
 }
+
 
