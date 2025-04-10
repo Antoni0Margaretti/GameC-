@@ -25,11 +25,13 @@ public class PlayerController : MonoBehaviour
     public float wallHangTime = 0.5f;      // Время висения на стене
     public float wallSlideSpeed = 2f;     // Скорость скольжения по стене
     public float wallJumpForce = 10f;    // Сила прыжка от стены
-    public float wallSlideAcceleration = 0.5f; // Ускорение скольжения вниз
     private bool isTouchingWall;          // Проверка касания стены
     private bool isSlidingOnWall;         // Состояние скольжения по стене
     private float wallDetachCooldown = 0.1f; // Время между повторными цепляниями
     private float timeSinceDetached;      // Время с момента отлипания от стены
+
+    // Флаг направления персонажа
+    private bool facingRight = true;
 
     // Прочие компоненты
     private Rigidbody2D rb;
@@ -51,28 +53,28 @@ public class PlayerController : MonoBehaviour
         float moveInput = Input.GetAxis("Horizontal");
         if (!isSlidingOnWall && !isSliding && !isCrouching)
         {
-            rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
+            rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
 
-            // Поворот персонажа
-            if (moveInput > 0)
+            // Обновляем направление персонажа
+            if (moveInput > 0 && !facingRight)
             {
-                transform.localScale = new Vector3(Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
+                Flip();
             }
-            else if (moveInput < 0)
+            else if (moveInput < 0 && facingRight)
             {
-                transform.localScale = new Vector3(-Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
+                Flip();
             }
         }
 
         // Прыжок
         if (Input.GetButtonDown("Jump") && (IsGrounded() || jumpCount < maxJumps || isSlidingOnWall))
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            rb.velocity = new Vector2(rb.velocity.x, jumpForce);
 
             // Если персонаж скользит по стене, прыжок отталкивает его
             if (isSlidingOnWall)
             {
-                rb.linearVelocity = new Vector2(-Mathf.Sign(transform.localScale.x) * speed, wallJumpForce);
+                rb.velocity = new Vector2(-Mathf.Sign(transform.localScale.x) * speed, wallJumpForce);
                 isSlidingOnWall = false;
                 timeSinceDetached = 0f;
             }
@@ -91,7 +93,7 @@ public class PlayerController : MonoBehaviour
         isTouchingWall = IsTouchingWall();
         if (isTouchingWall && !IsGrounded() && timeSinceDetached > wallDetachCooldown)
         {
-            StartWallSlide();
+            StartWallHang(); // Начало висения на стене
         }
 
         // Отмена скольжения при падении, если нажать S
@@ -118,7 +120,7 @@ public class PlayerController : MonoBehaviour
             if (!isCrouching)
             {
                 isCrouching = true;
-                rb.linearVelocity = Vector2.zero; // Полная остановка
+                rb.velocity = Vector2.zero; // Полная остановка
             }
         }
         else if (isCrouching)
@@ -127,11 +129,22 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Цепляние за стену
-    private void StartWallSlide()
+    // Цепляние за стену (висение)
+    private void StartWallHang()
     {
-        isSlidingOnWall = true;
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, -wallSlideSpeed); // Начальная скорость скольжения
+        if (!isSlidingOnWall) // Проверка, чтобы цепляние происходило только один раз
+        {
+            isSlidingOnWall = true;
+            rb.velocity = Vector2.zero; // Полная остановка при цеплянии
+            Invoke("BeginWallSlide", wallHangTime); // Через wallHangTime начнётся скольжение
+        }
+    }
+
+    // Начало скольжения
+    private void BeginWallSlide()
+    {
+        isSlidingOnWall = true; // Переход в состояние скольжения
+        rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed); // Начальная скорость скольжения
     }
 
     private void StopWallSlide()
@@ -147,9 +160,9 @@ public class PlayerController : MonoBehaviour
         {
             canDash = false;
             Vector2 dashVector = new Vector2(Mathf.Sign(moveInput) * dashDistance, 0);
-            rb.linearVelocity = dashVector;
+            rb.velocity = dashVector;
             yield return new WaitForSeconds(0.1f); // Длительность рывка
-            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y); // Обнуление горизонтальной скорости
+            rb.velocity = new Vector2(0, rb.velocity.y); // Обнуление горизонтальной скорости
             yield return new WaitForSeconds(dashCooldown); // Ожидание перед следующим рывком
             canDash = true;
         }
@@ -161,9 +174,9 @@ public class PlayerController : MonoBehaviour
         if (moveInput != 0 && IsGrounded())
         {
             isSliding = true;
-            rb.linearVelocity = new Vector2(Mathf.Sign(moveInput) * slideSpeed, rb.linearVelocity.y);
+            rb.velocity = new Vector2(Mathf.Sign(moveInput) * slideSpeed, rb.velocity.y);
             yield return new WaitForSeconds(slideDuration);
-            rb.linearVelocity = Vector2.zero; // Полная остановка
+            rb.velocity = Vector2.zero; // Полная остановка
             isSliding = false;
         }
     }
@@ -183,6 +196,13 @@ public class PlayerController : MonoBehaviour
         float radius = 0.2f;
         return Physics2D.OverlapCircle(position, radius, wallLayer);
     }
+
+    // Метод для поворота персонажа
+    private void Flip()
+    {
+        facingRight = !facingRight; // Меняем направление персонажа
+        Vector3 newScale = transform.localScale;
+        newScale.x *= -1; // Инвертируем ось X для поворота
+        transform.localScale = newScale;
+    }
 }
-
-
