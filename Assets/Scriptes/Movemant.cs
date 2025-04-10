@@ -30,7 +30,7 @@ public class PlayerController : MonoBehaviour
 
     // Прочие компоненты
     private Rigidbody2D rb;
-    private Animator animator;
+    private Transform playerTransform;
 
     // Слои для проверки
     public LayerMask groundLayer;
@@ -39,20 +39,21 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
-        animator = GetComponent<Animator>();
+        playerTransform = transform;
+        // Анимации отключены, этот компонент больше не используется.
+        // animator = GetComponent<Animator>();
     }
 
     void Update()
     {
-        // Проверяем, что персонаж не в состоянии подката
         if (!isSliding && !isCrouching)
         {
             // Бег
             float moveInput = Input.GetAxis("Horizontal");
             rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
 
-            // Анимация бега
-            animator.SetFloat("Speed", Mathf.Abs(moveInput));
+            // Анимация бега (закомментировано)
+            // animator.SetFloat("Speed", Mathf.Abs(moveInput));
 
             // Поворот персонажа
             if (moveInput > 0)
@@ -70,7 +71,9 @@ public class PlayerController : MonoBehaviour
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
             jumpCount++;
-            animator.SetTrigger("Jump");
+
+            // Анимация прыжка (закомментировано)
+            // animator.SetTrigger("Jump");
         }
 
         // Сброс прыжков при касании земли
@@ -86,13 +89,17 @@ public class PlayerController : MonoBehaviour
             {
                 isCrouching = true;
                 rb.velocity = Vector2.zero; // Полная остановка
-                animator.SetBool("Crouch", true);
+
+                // Анимация приседания (закомментировано)
+                // animator.SetBool("Crouch", true);
             }
         }
         else if (isCrouching)
         {
             isCrouching = false;
-            animator.SetBool("Crouch", false);
+
+            // Анимация приседания (закомментировано)
+            // animator.SetBool("Crouch", false);
         }
 
         // Рывок
@@ -107,12 +114,16 @@ public class PlayerController : MonoBehaviour
         {
             isWallSliding = true;
             rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed);
-            animator.SetBool("WallSlide", true);
+
+            // Анимация скольжения по стене (закомментировано)
+            // animator.SetBool("WallSlide", true);
         }
         else
         {
             isWallSliding = false;
-            animator.SetBool("WallSlide", false);
+
+            // Анимация скольжения по стене (закомментировано)
+            // animator.SetBool("WallSlide", false);
         }
 
         // Отпрыгивание от стены
@@ -157,7 +168,10 @@ public class PlayerController : MonoBehaviour
     {
         isSliding = true;
         rb.velocity = new Vector2(moveInput * slideSpeed, rb.velocity.y);
-        animator.SetTrigger("Slide");
+
+        // Анимация подката (закомментировано)
+        // animator.SetTrigger("Slide");
+
         yield return new WaitForSeconds(slideDuration);
         isSliding = false;
     }
