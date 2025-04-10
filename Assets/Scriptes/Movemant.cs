@@ -8,29 +8,14 @@ public class PlayerController : MonoBehaviour
     public int maxJumps = 2;
     private int jumpCount;
 
-    // Переменные для приседания
-    private bool isCrouching = false;
-
-    // Переменные для рывка
-    public float dashDistance = 5f;
-    public float dashCooldown = 1f;
-    private bool canDash = true;
-
-    // Переменные для подката
-    public float slideSpeed = 8f;
-    public float slideDuration = 0.5f;
-    private bool isSliding = false;
-
     // Переменные для стены
     public float wallSlideSpeed = 2f;
-    public float wallStickTime = 0.5f;
     private bool isTouchingWall;
     private bool isWallSliding;
-    private bool canWallJump = true;
+    private bool isHoldingWall;
 
     // Прочие компоненты
     private Rigidbody2D rb;
-    private Transform playerTransform;
 
     // Слои для проверки
     public LayerMask groundLayer;
@@ -39,41 +24,36 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
-        playerTransform = transform;
-        // Анимации отключены, этот компонент больше не используется.
-        // animator = GetComponent<Animator>();
     }
 
     void Update()
     {
-        if (!isSliding && !isCrouching)
+        // Бег
+        float moveInput = Input.GetAxis("Horizontal");
+        rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
+
+        // Поворот персонажа
+        if (moveInput > 0)
         {
-            // Бег
-            float moveInput = Input.GetAxis("Horizontal");
-            rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
-
-            // Анимация бега (закомментировано)
-            // animator.SetFloat("Speed", Mathf.Abs(moveInput));
-
-            // Поворот персонажа
-            if (moveInput > 0)
-            {
-                transform.localScale = new Vector3(1, 1, 1);
-            }
-            else if (moveInput < 0)
-            {
-                transform.localScale = new Vector3(-1, 1, 1);
-            }
+            transform.localScale = new Vector3(1, 1, 1);
+        }
+        else if (moveInput < 0)
+        {
+            transform.localScale = new Vector3(-1, 1, 1);
         }
 
         // Прыжок
-        if (Input.GetButtonDown("Jump") && (IsGrounded() || jumpCount < maxJumps))
+        if (Input.GetButtonDown("Jump") && (IsGrounded() || jumpCount < maxJumps || isHoldingWall))
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
-            jumpCount++;
 
-            // Анимация прыжка (закомментировано)
-            // animator.SetTrigger("Jump");
+            // Если персонаж держится за стену, сбрасываем стеновое удержание
+            if (isHoldingWall)
+            {
+                isHoldingWall = false;
+            }
+
+            jumpCount++;
         }
 
         // Сброс прыжков при касании земли
@@ -82,97 +62,32 @@ public class PlayerController : MonoBehaviour
             jumpCount = 0;
         }
 
-        // Приседание
-        if (Input.GetKey(KeyCode.S) && IsGrounded())
-        {
-            if (!isCrouching)
-            {
-                isCrouching = true;
-                rb.velocity = Vector2.zero; // Полная остановка
-
-                // Анимация приседания (закомментировано)
-                // animator.SetBool("Crouch", true);
-            }
-        }
-        else if (isCrouching)
-        {
-            isCrouching = false;
-
-            // Анимация приседания (закомментировано)
-            // animator.SetBool("Crouch", false);
-        }
-
-        // Рывок
-        if (Input.GetKeyDown(KeyCode.LeftShift) && canDash)
-        {
-            StartCoroutine(Dash(Input.GetAxis("Horizontal")));
-        }
-
-        // Цепляние за стену
+        // Логика стены: скольжение и удержание
         isTouchingWall = IsTouchingWall();
-        if (isTouchingWall && !IsGrounded() && Input.GetAxis("Horizontal") != 0)
+        if (isTouchingWall && !IsGrounded())
         {
-            isWallSliding = true;
-            rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed);
-
-            // Анимация скольжения по стене (закомментировано)
-            // animator.SetBool("WallSlide", true);
+            isHoldingWall = true; // Персонаж автоматически держится за стену
+            rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed); // Замедленное скольжение
         }
-        else
+        else if (!isTouchingWall)
         {
-            isWallSliding = false;
-
-            // Анимация скольжения по стене (закомментировано)
-            // animator.SetBool("WallSlide", false);
-        }
-
-        // Отпрыгивание от стены
-        if (Input.GetButtonDown("Jump") && isWallSliding)
-        {
-            rb.velocity = new Vector2(-Mathf.Sign(transform.localScale.x) * speed, jumpForce);
-        }
-
-        // Подкат
-        if (Input.GetKeyDown(KeyCode.LeftControl) && !isSliding && IsGrounded())
-        {
-            StartCoroutine(Slide(Input.GetAxis("Horizontal")));
+            isHoldingWall = false; // Отпускаем стену, если контакт потерян
         }
     }
 
     // Проверка на землю
     private bool IsGrounded()
     {
-        return Physics2D.OverlapCircle(transform.position, 0.1f, groundLayer);
+        Vector2 position = transform.position;
+        float radius = 0.2f;
+        return Physics2D.OverlapCircle(position, radius, groundLayer);
     }
 
     // Проверка на стену
     private bool IsTouchingWall()
     {
-        return Physics2D.OverlapCircle(transform.position, 0.1f, wallLayer);
-    }
-
-    // Рывок
-    private System.Collections.IEnumerator Dash(float moveInput)
-    {
-        canDash = false;
-        Vector2 dashVector = new Vector2(moveInput * dashDistance, rb.velocity.y);
-        rb.velocity = dashVector;
-        yield return new WaitForSeconds(0.1f); // Длительность рывка
-        rb.velocity = Vector2.zero; // Обнуление скорости
-        yield return new WaitForSeconds(dashCooldown); // Восстановление рывка
-        canDash = true;
-    }
-
-    // Подкат
-    private System.Collections.IEnumerator Slide(float moveInput)
-    {
-        isSliding = true;
-        rb.velocity = new Vector2(moveInput * slideSpeed, rb.velocity.y);
-
-        // Анимация подката (закомментировано)
-        // animator.SetTrigger("Slide");
-
-        yield return new WaitForSeconds(slideDuration);
-        isSliding = false;
+        Vector2 position = transform.position;
+        float radius = 0.2f;
+        return Physics2D.OverlapCircle(position, radius, wallLayer);
     }
 }
