@@ -34,7 +34,7 @@ public class PlayerController : MonoBehaviour
     // --- Приседание – для dash не допускается
     private bool isCrouching = false;
 
-    // --- Параметры цепления за стену (Wall Hang/Slide)
+    // --- Параметры цепления за стену (Wall Hang / Slide)
     public float wallHangTime = 0.5f;    // Время, которое персонаж висит неподвижно сразу после цепления за стену
     public float wallSlideAcceleration = 10f;  // Ускорение скольжения по стене (единиц/сек)
     public float wallSlideMaxSpeed = 5f;       // Максимальная скорость скольжения (при достижении эта величина используется как абсолютное значение)
@@ -43,6 +43,10 @@ public class PlayerController : MonoBehaviour
     private bool wallSlideActive = false;  // Флаг, переведён ли режим "висения" в режим скольжения с ускорением
     public float wallDetachCooldown = 0.3f;   // Время, в течение которого нельзя повторно зацепиться за стену
     private float timeSinceDetached = 0f;
+
+    // --- Период благодати при смене направления в цеплении за стену
+    private float wallFlipTimer = 0f;
+    public float wallFlipGracePeriod = 0.1f;
 
     // --- Флаг направления (куда смотрит персонаж)
     private bool facingRight = true;
@@ -53,7 +57,6 @@ public class PlayerController : MonoBehaviour
         collisionController = GetComponent<CollisionController>();
         boxCollider = GetComponent<BoxCollider2D>();
 
-        // Сохраняем исходные параметры хитбокса
         normalSize = boxCollider.size;
         normalOffset = boxCollider.offset;
     }
@@ -61,31 +64,41 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         timeSinceDetached += Time.deltaTime;
-        float moveInput = Input.GetAxis("Horizontal");
-
-        // Кэшируем состояния из CollisionController
-        bool grounded = collisionController.IsGrounded;
-        bool touchingWall = collisionController.IsTouchingWall;
-
-        // Если в режиме цепления/скольжения за стену, но стена перестала обнаруживаться – прекращаем цепление
-        if (isSlidingOnWall && !touchingWall)
+        if (isSlidingOnWall) // Если цепление активно, накапливаем таймер после поворота
         {
-            StopWallSlide();
+            wallFlipTimer += Time.deltaTime;
+        }
+        else
+        {
+            wallFlipTimer = 0f;
         }
 
-        // --- Стандартное движение (если не цепляемся за стену, не в подкате и не в приседе)
-        if (!isSlidingOnWall && !isSliding && !isCrouching)
-        {
-            rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
+        float moveInput = Input.GetAxis("Horizontal");
 
+        bool grounded = collisionController.IsGrounded;
+        // Проверка контакта стены используется дополнительно в IsAnyEdgeFullyOnWall()
+
+        // Если цепление активно, проверяем, что хотя бы один узкий участок хитбокса полностью контактирует со стеной.
+        // Но пропускаем проверку, если только что поменяли направление (в пределах grace period).
+        if (isSlidingOnWall && wallFlipTimer >= wallFlipGracePeriod)
+        {
+            if (!IsAnyEdgeFullyOnWall())
+            {
+                StopWallSlide();
+            }
+        }
+        else if (isSlidingOnWall) // Даже если в пределах grace, разрешаем поворот.
+        {
             if (moveInput > 0 && !facingRight)
                 Flip();
             else if (moveInput < 0 && facingRight)
                 Flip();
         }
-        else if (isSlidingOnWall)
+
+        // --- Стандартное движение (если не цепляемся, не в подкате и не в приседе)
+        if (!isSlidingOnWall && !isSliding && !isCrouching)
         {
-            // Даже при цеплении за стену отслеживаем ввод для смены направления
+            rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
             if (moveInput > 0 && !facingRight)
                 Flip();
             else if (moveInput < 0 && facingRight)
@@ -96,10 +109,8 @@ public class PlayerController : MonoBehaviour
         if (Input.GetButtonDown("Jump") && (grounded || jumpCount < maxJumps || isSlidingOnWall))
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-
             if (isSlidingOnWall)
             {
-                // Wall jump: отталкиваемся от стены (направление противоположно, куда смотрит персонаж)
                 rb.linearVelocity = new Vector2((facingRight ? -1 : 1) * speed, wallJumpForce);
                 StopWallSlide();
                 timeSinceDetached = 0f;
@@ -113,7 +124,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // --- Инициирование цепления за стену (Wall Hang)
-        if (touchingWall && !grounded &&
+        if (collisionController.IsTouchingWall && !grounded &&
             Mathf.Abs(moveInput) > 0.01f &&
             ((facingRight && moveInput > 0) || (!facingRight && moveInput < 0)) &&
             timeSinceDetached >= wallDetachCooldown)
@@ -125,15 +136,14 @@ public class PlayerController : MonoBehaviour
             StopWallSlide();
         }
 
-        // Если мы уже цепляемся за стену и режим скольжения активен, рассчитываем ускорение
-        if (isSlidingOnWall && wallSlideActive && touchingWall)
+        // Если ускоренный режим скольжения активен, плавно увеличиваем скорость по Y до –wallSlideMaxSpeed.
+        if (isSlidingOnWall && wallSlideActive && collisionController.IsTouchingWall)
         {
-            // Используем Mathf.MoveTowards для постепенного увеличения "скорости падения"
             float newY = Mathf.MoveTowards(rb.linearVelocity.y, -wallSlideMaxSpeed, wallSlideAcceleration * Time.deltaTime);
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, newY);
         }
 
-        // --- Остальные механики (Dash, Slide, Crouch) остаются без изменений
+        // --- Остальные механики (Dash, Slide, Crouch) остаются без изменений.
         if (Input.GetKeyDown(KeyCode.LeftShift) && canDash && !isSliding && !isCrouching)
         {
             StartCoroutine(Dash());
@@ -161,37 +171,64 @@ public class PlayerController : MonoBehaviour
         collisionController.ignoreFlipForWallChecks = isSlidingOnWall;
     }
 
-    // --- Методы цепления за стену (Wall Hang / Slide)
+    // --- Метод проверки полного контакта узкого участка (с обеих сторон).
+    private bool IsAnyEdgeFullyOnWall()
+    {
+        Bounds playerBounds = boxCollider.bounds;
+        Vector2 edgeSize = new Vector2(0.05f, playerBounds.size.y * 0.9f);
+        Vector2 leftEdgeCenter = new Vector2(playerBounds.min.x, playerBounds.center.y);
+        Vector2 rightEdgeCenter = new Vector2(playerBounds.max.x, playerBounds.center.y);
 
-    // Прицепляемся к стене: устанавливаем остановку и сбрасываем прыжки.
+        Collider2D leftWall = Physics2D.OverlapBox(leftEdgeCenter, edgeSize, 0f, collisionController.wallLayer);
+        Collider2D rightWall = Physics2D.OverlapBox(rightEdgeCenter, edgeSize, 0f, collisionController.wallLayer);
+
+        bool leftContact = false;
+        bool rightContact = false;
+
+        if (leftWall != null)
+        {
+            Bounds leftWallBounds = leftWall.bounds;
+            Bounds leftEdgeBounds = new Bounds(leftEdgeCenter, edgeSize);
+            leftContact = leftWallBounds.Contains(leftEdgeBounds.min) && leftWallBounds.Contains(leftEdgeBounds.max);
+        }
+        if (rightWall != null)
+        {
+            Bounds rightWallBounds = rightWall.bounds;
+            Bounds rightEdgeBounds = new Bounds(rightEdgeCenter, edgeSize);
+            rightContact = rightWallBounds.Contains(rightEdgeBounds.min) && rightWallBounds.Contains(rightEdgeBounds.max);
+        }
+        return leftContact || rightContact;
+    }
+
+    // --- Методы цепления за стену (Wall Hang/Slide)
     private void StartWallHang()
     {
         if (!isSlidingOnWall)
         {
             isSlidingOnWall = true;
-            wallSlideActive = false;  // Сначала состояние "висения"
+            wallSlideActive = false;  // Сначала персонаж висит неподвижно.
             rb.linearVelocity = Vector2.zero;
-            jumpCount = 0; // Сброс для возможности двойного прыжка
+            jumpCount = 0;  // Сброс прыжкового счётчика.
+            wallFlipTimer = 0f; // Сброс таймера поворота.
             StartCoroutine(WallHangCoroutine());
         }
     }
 
-    // Coroutine для режима "hang": персонаж в течение wallHangTime остается неподвижным, после чего запускается ускоренное скольжение.
     private IEnumerator WallHangCoroutine()
     {
         yield return new WaitForSeconds(wallHangTime);
         if (isSlidingOnWall)
         {
-            wallSlideActive = true;  // Переводим режим из "висения" в "скольжение"
+            wallSlideActive = true;  // Режим ускоренного скольжения активирован.
         }
     }
 
-    // Завершаем состояние цепления/скольжения
     private void StopWallSlide()
     {
         isSlidingOnWall = false;
         wallSlideActive = false;
         timeSinceDetached = 0f;
+        wallFlipTimer = 0f;
     }
 
     // --- Рывок (Dash)
@@ -234,9 +271,14 @@ public class PlayerController : MonoBehaviour
     }
 
     // --- Изменение направления (Flip)
+    // При повороте в режиме цепления сбрасываем таймер grace period.
     private void Flip()
     {
         facingRight = !facingRight;
+        if (isSlidingOnWall)
+        {
+            wallFlipTimer = 0f;
+        }
         Vector3 s = transform.localScale;
         s.x *= -1;
         transform.localScale = s;
