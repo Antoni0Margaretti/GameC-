@@ -31,14 +31,14 @@ public class CollisionController : MonoBehaviour
         Vector2 groundCheckPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         IsGrounded = Physics2D.OverlapBox(groundCheckPos, groundCheckSize, 0f, groundLayer);
 
-        // ≈сли ignoreFlipForWallChecks==true Ц прибавл€ем смещение к позиции, иначе TransformPoint учитывает поворот
+        // ≈сли ignoreFlipForWallChecks==true Ц прибавл€ем смещение к позиции, иначе используем TransformPoint (с учЄтом поворота)
         Vector2 wallCheckPos = ignoreFlipForWallChecks ?
             ((Vector2)transform.position + wallCheckOffset) :
             (Vector2)transform.TransformPoint(wallCheckOffset);
         IsTouchingWall = Physics2D.OverlapBox(wallCheckPos, wallCheckSize, 0f, wallLayer);
     }
 
-    // ƒл€ визуальной отладки: рисуем зоны проверки
+    // ƒл€ визуальной отладки Ц рисуем зоны проверки
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.green;

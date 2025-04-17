@@ -8,11 +8,10 @@ public class PlayerController : MonoBehaviour
     private Rigidbody2D rb;
     private BoxCollider2D boxCollider;
 
-    // --- Динамический хитбокс (эту тему займёмся позже)
+    // --- (Для динамических хитбоксов – тема рассматривается отдельно)
     private Vector2 normalSize, normalOffset;
-    // Для приседа и подката можно задать размеры, но сейчас нас не волнует их изменение
 
-    // --- Флаг неуязвимости (используется для логики получения урона)
+    // --- Флаг неуязвимости (для логики получения урона)
     private bool isInvulnerable = false;
 
     // --- Параметры движения
@@ -23,7 +22,7 @@ public class PlayerController : MonoBehaviour
 
     // --- Параметры рывка (Dash)
     public float dashDistance = 5f;
-    public float dashDuration = 0.2f;  // Длительность рывка (не мгновенная телепортация)
+    public float dashDuration = 0.2f;  // Длительность рывка (не телепортация)
     public float dashCooldown = 1f;
     private bool canDash = true;
 
@@ -32,7 +31,7 @@ public class PlayerController : MonoBehaviour
     public float slideDuration = 0.5f;
     private bool isSliding = false;
 
-    // --- Приседание
+    // --- Приседание – для dash не допускается
     private bool isCrouching = false;
 
     // --- Параметры цепления за стену (Wall Hang)
@@ -66,11 +65,12 @@ public class PlayerController : MonoBehaviour
         bool grounded = collisionController.IsGrounded;
         bool touchingWall = collisionController.IsTouchingWall;
 
-        // --- Обычное движение (если не цепляемся за стену, не в подкате и не в приседе)
+        // --- Движение (если не цепляемся за стену, не в подкате и не в приседе)
         if (!isSlidingOnWall && !isSliding && !isCrouching)
         {
             rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
 
+            // Используем направление персонажа, чтобы определить сторону
             if (moveInput > 0 && !facingRight)
                 Flip();
             else if (moveInput < 0 && facingRight)
@@ -78,21 +78,19 @@ public class PlayerController : MonoBehaviour
         }
         else if (isSlidingOnWall)
         {
-            // При цеплении за стену всё равно отслеживаем изменение направления
             if (moveInput > 0 && !facingRight)
                 Flip();
             else if (moveInput < 0 && facingRight)
                 Flip();
         }
 
-        // --- Прыжок
+        // --- Прыжок (работает если на земле, если ещё есть прыжки или цепляясь за стену)
         if (Input.GetButtonDown("Jump") && (grounded || jumpCount < maxJumps || isSlidingOnWall))
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
-
             if (isSlidingOnWall)
             {
-                // Wall jump – отталкиваемся от стены
+                // Wall jump: отталкиваемся от стены (просто сбрасываем цепление)
                 rb.velocity = new Vector2((facingRight ? -1 : 1) * speed, wallJumpForce);
                 isSlidingOnWall = false;
                 timeSinceDetached = 0f;
@@ -119,13 +117,13 @@ public class PlayerController : MonoBehaviour
         }
 
         // --- Рывок (Dash)
-        if (Input.GetKeyDown(KeyCode.LeftShift) && canDash)
+        // Рывок НЕ разрешается в состояниях подката (isSliding) или приседа (isCrouching)
+        if (Input.GetKeyDown(KeyCode.LeftShift) && canDash && !isSliding && !isCrouching)
         {
-            StartCoroutine(Dash(moveInput));
+            StartCoroutine(Dash());
         }
 
         // --- Подкат (Slide) и приседание
-        // Здесь оставляем прежнюю логику; динамические хитбоксы пока опускаем
         if (Input.GetKeyDown(KeyCode.LeftControl) && grounded && Mathf.Abs(moveInput) > 0.01f && !isSliding)
         {
             StartCoroutine(Slide(moveInput));
@@ -140,14 +138,14 @@ public class PlayerController : MonoBehaviour
             isCrouching = false;
         }
 
-        // --- Если не в подкате и не в приседе – восстанавливаем стандартный хитбокс
+        // Если не в подкате и не в приседе, восстанавливаем стандартный хитбокс
         if (!isSliding && !isCrouching)
         {
             boxCollider.size = normalSize;
             boxCollider.offset = normalOffset;
         }
 
-        // Если цепляемся за стену – уведомляем CollisionController
+        // Если цепляемся за стену, уведомляем CollisionController об этом (чтобы игнорировать flip)
         collisionController.ignoreFlipForWallChecks = isSlidingOnWall;
     }
 
@@ -182,17 +180,29 @@ public class PlayerController : MonoBehaviour
     }
 
     // --- Рывок (Dash)
-    private IEnumerator Dash(float moveInput)
+    private IEnumerator Dash()
     {
+        // Условия: работает только если не в подкате и не в приседе (условия проверены в Update)
         canDash = false;
         isInvulnerable = true;
 
-        // Чтобы dash был плавным, отключаем гравитацию на время рывка
+        // Если персонаж находится в воздухе, обнуляем вертикальную скорость (иначе продолжается падение)
+        if (!collisionController.IsGrounded)
+        {
+            rb.velocity = new Vector2(rb.velocity.x, 0);
+        }
+
+        // Если персонаж висит на стене, то dash выполняется только в сторону, отдаляясь от стены.
+        // В негабаритном состоянии (на земле или в воздухе) dash производится в ту сторону, куда смотрит персонаж.
+        float dashDirection = (facingRight ? 1 : -1);
+        // Рассчитываем скорость так, чтобы за dashDuration пройти dashDistance
+        float dashSpeed = dashDistance / dashDuration;
+
+        // Отключаем гравитацию, чтобы движение было строго горизонтальным
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0;
 
-        float dashDirection = (Mathf.Abs(moveInput) > 0.01f) ? Mathf.Sign(moveInput) : (facingRight ? 1 : -1);
-        float dashSpeed = dashDistance / dashDuration; // Скорость, позволяющая пройти dashDistance за dashDuration секунд
+        // Запускаем рывок: задаём горизонтальную скорость
         rb.velocity = new Vector2(dashDirection * dashSpeed, 0);
 
         yield return new WaitForSeconds(dashDuration);
@@ -220,8 +230,8 @@ public class PlayerController : MonoBehaviour
     private void Flip()
     {
         facingRight = !facingRight;
-        Vector3 s = transform.localScale;
-        s.x *= -1;
-        transform.localScale = s;
+        Vector3 scale = transform.localScale;
+        scale.x *= -1;
+        transform.localScale = scale;
     }
 }
