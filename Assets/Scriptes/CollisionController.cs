@@ -13,10 +13,9 @@ public class CollisionController : MonoBehaviour
     // Локальное смещение для проверки стены (например, (0.4f, 0))
     public Vector2 wallCheckOffset = new Vector2(0.4f, 0);
     public Vector2 wallCheckSize = new Vector2(0.2f, 1.0f);
-    // Если true – игнорируем поворот (flip) при проверке стены
+    // Если true – игнорируем поворот (flip) объекта для проверки стены (фиксированная зона)
     public bool ignoreFlipForWallChecks = false;
 
-    // Свойства для доступа из других скриптов
     public bool IsGrounded { get; private set; }
     public bool IsTouchingWall { get; private set; }
 
@@ -27,18 +26,17 @@ public class CollisionController : MonoBehaviour
 
     private void CheckCollisions()
     {
-        // Преобразуем локальное смещение для земли в мировые координаты
+        // Земля: преобразуем локальное смещение в мировые координаты
         Vector2 groundCheckPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         IsGrounded = Physics2D.OverlapBox(groundCheckPos, groundCheckSize, 0f, groundLayer);
 
-        // Если ignoreFlipForWallChecks==true – прибавляем смещение к позиции, иначе используем TransformPoint (с учётом поворота)
+        // Стена: если ignoreFlipForWallChecks==true – прибавляем смещение к позиции, иначе TransformPoint учитывает поворот
         Vector2 wallCheckPos = ignoreFlipForWallChecks ?
             ((Vector2)transform.position + wallCheckOffset) :
             (Vector2)transform.TransformPoint(wallCheckOffset);
         IsTouchingWall = Physics2D.OverlapBox(wallCheckPos, wallCheckSize, 0f, wallLayer);
     }
 
-    // Для визуальной отладки – рисуем зоны проверки
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.green;
