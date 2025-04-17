@@ -606,6 +606,7 @@ MonoBehaviour:
   jumpForce: 10
   maxJumps: 2
   dashDistance: 50
+  dashDuration: 1
   dashCooldown: 1
   slideSpeed: 8
   slideDuration: 0.5
