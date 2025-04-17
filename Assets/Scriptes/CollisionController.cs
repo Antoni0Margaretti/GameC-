@@ -4,11 +4,13 @@ public class CollisionController : MonoBehaviour
 {
     [Header("Настройки проверки земли")]
     public LayerMask groundLayer;
-    public float groundCheckRadius = 0.25f;
+    public Vector2 groundCheckOffset = new Vector2(0, -0.5f);
+    public Vector2 groundCheckSize = new Vector2(0.8f, 0.2f);
 
     [Header("Настройки проверки стены")]
     public LayerMask wallLayer;
-    public float wallCheckRadius = 0.2f;
+    public Vector2 wallCheckOffset = new Vector2(0.4f, 0);
+    public Vector2 wallCheckSize = new Vector2(0.2f, 1.0f);
 
     // Свойства для доступа из другого скрипта
     public bool IsGrounded { get; private set; }
@@ -21,18 +23,24 @@ public class CollisionController : MonoBehaviour
 
     private void CheckCollisions()
     {
-        Vector2 pos = transform.position;
-        IsGrounded = Physics2D.OverlapCircle(pos, groundCheckRadius, groundLayer);
-        IsTouchingWall = Physics2D.OverlapCircle(pos, wallCheckRadius, wallLayer);
+        // Проверка земли: смещаем зону проверки от центра персонажа
+        Vector2 groundCheckPos = (Vector2)transform.position + groundCheckOffset;
+        IsGrounded = Physics2D.OverlapBox(groundCheckPos, groundCheckSize, 0, groundLayer);
+
+        // Проверка стены: смещаем зону проверки по горизонтали
+        Vector2 wallCheckPos = (Vector2)transform.position + wallCheckOffset;
+        IsTouchingWall = Physics2D.OverlapBox(wallCheckPos, wallCheckSize, 0, wallLayer);
     }
 
-    // Для визуальной отладки (чат: убедитесь, что Gizmos включены в сцене)
-    private void OnDrawGizmosSelected()
+    // Для визуальной отладки — отображение зон проверки
+    void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(transform.position, groundCheckRadius);
+        Vector2 groundCheckPos = (Vector2)transform.position + groundCheckOffset;
+        Gizmos.DrawWireCube(groundCheckPos, groundCheckSize);
 
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, wallCheckRadius);
+        Vector2 wallCheckPos = (Vector2)transform.position + wallCheckOffset;
+        Gizmos.DrawWireCube(wallCheckPos, wallCheckSize);
     }
 }
