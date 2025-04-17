@@ -2,18 +2,18 @@ using UnityEngine;
 
 public class CollisionController : MonoBehaviour
 {
-    [Header("Настройки проверки земли")]
+    [Header("Ground Check Settings")]
     public LayerMask groundLayer;
-    // Локальное смещение для проверки земли (например: (0, -0.5f))
+    // Локальное смещение для проверки земли (например, (0, -0.5f))
     public Vector2 groundCheckOffset = new Vector2(0, -0.5f);
     public Vector2 groundCheckSize = new Vector2(0.8f, 0.2f);
 
-    [Header("Настройки проверки стены")]
+    [Header("Wall Check Settings")]
     public LayerMask wallLayer;
-    // Локальное смещение для проверки стены (например: (0.4f, 0))
+    // Локальное смещение для проверки стены (например, (0.4f, 0))
     public Vector2 wallCheckOffset = new Vector2(0.4f, 0);
     public Vector2 wallCheckSize = new Vector2(0.2f, 1.0f);
-    // Если true – смещение для проверки стены применяется без учета поворота (флипа)
+    // Если true – игнорируем флип при проверке стены (фиксированное смещение)
     public bool ignoreFlipForWallChecks = false;
 
     // Свойства для доступа из других скриптов
@@ -27,18 +27,19 @@ public class CollisionController : MonoBehaviour
 
     private void CheckCollisions()
     {
-        // Преобразуем локальное смещение для земли в мировые координаты
+        // Преобразуем локальное смещение для земли
         Vector2 groundCheckPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         IsGrounded = Physics2D.OverlapBox(groundCheckPos, groundCheckSize, 0f, groundLayer);
 
-        // Для стены используем либо преобразование смещения, либо смещение от центра объекта (если игнорируем флип)
+        // Для стены: если ignoreFlipForWallChecks==true – используем позицию объекта + смещение,
+        // иначе – преобразуем смещение через TransformPoint
         Vector2 wallCheckPos = ignoreFlipForWallChecks ?
             ((Vector2)transform.position + wallCheckOffset) :
             (Vector2)transform.TransformPoint(wallCheckOffset);
         IsTouchingWall = Physics2D.OverlapBox(wallCheckPos, wallCheckSize, 0f, wallLayer);
     }
 
-    // Визуальная отладка – рисуем области проверки
+    // Для визуальной отладки: рисуем области проверки
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.green;
