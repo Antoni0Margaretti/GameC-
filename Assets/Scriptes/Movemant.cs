@@ -58,7 +58,7 @@ public class PlayerController : MonoBehaviour
         // Обработка обычного движения (если не цепляемся, не в подкате и не приседаем)
         if (!isSlidingOnWall && !isSliding && !isCrouching)
         {
-            rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
+            rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
 
             // Обновляем направление персонажа на основе ввода
             if (moveInput > 0 && !facingRight)
@@ -78,12 +78,12 @@ public class PlayerController : MonoBehaviour
         // Обработка прыжка:
         if (Input.GetButtonDown("Jump") && (grounded || jumpCount < maxJumps || isSlidingOnWall))
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            rb.velocity = new Vector2(rb.velocity.x, jumpForce);
 
             // Если персонаж отцеплен от стены прыжком – выполняется wall jump
             if (isSlidingOnWall)
             {
-                rb.linearVelocity = new Vector2(-(facingRight ? 1 : -1) * speed, wallJumpForce);
+                rb.velocity = new Vector2(-(facingRight ? 1 : -1) * speed, wallJumpForce);
                 isSlidingOnWall = false;
                 timeSinceDetached = 0f;
             }
@@ -132,7 +132,7 @@ public class PlayerController : MonoBehaviour
             if (!isCrouching)
             {
                 isCrouching = true;
-                rb.linearVelocity = Vector2.zero;
+                rb.velocity = Vector2.zero;
             }
         }
         // Приседание также с клавишей S
@@ -141,7 +141,7 @@ public class PlayerController : MonoBehaviour
             if (!isCrouching)
             {
                 isCrouching = true;
-                rb.linearVelocity = Vector2.zero;
+                rb.velocity = Vector2.zero;
             }
         }
         else if (!Input.GetKey(KeyCode.S) && !Input.GetKey(KeyCode.LeftControl))
@@ -160,7 +160,7 @@ public class PlayerController : MonoBehaviour
         if (!isSlidingOnWall)
         {
             isSlidingOnWall = true;
-            rb.linearVelocity = Vector2.zero;
+            rb.velocity = Vector2.zero;
             jumpCount = 0;
             StartCoroutine(WallHangCoroutine());
         }
@@ -181,7 +181,7 @@ public class PlayerController : MonoBehaviour
     private void BeginWallSlide()
     {
         isSlidingOnWall = true;
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, -wallSlideSpeed);
+        rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed);
     }
 
     // Прекращение цепления
@@ -197,9 +197,9 @@ public class PlayerController : MonoBehaviour
         canDash = false;
         float dashDirection = Mathf.Abs(moveInput) > 0.01f ? Mathf.Sign(moveInput) : (facingRight ? 1 : -1);
         Vector2 dashVector = new Vector2(dashDirection * dashDistance, 0);
-        rb.linearVelocity = dashVector;
+        rb.velocity = dashVector;
         yield return new WaitForSeconds(0.1f);
-        rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+        rb.velocity = new Vector2(0, rb.velocity.y);
         yield return new WaitForSeconds(dashCooldown);
         canDash = true;
     }
@@ -209,9 +209,9 @@ public class PlayerController : MonoBehaviour
     {
         isSliding = true;
         float slideDirection = Mathf.Sign(moveInput);
-        rb.linearVelocity = new Vector2(slideDirection * slideSpeed, rb.linearVelocity.y);
+        rb.velocity = new Vector2(slideDirection * slideSpeed, rb.velocity.y);
         yield return new WaitForSeconds(slideDuration);
-        rb.linearVelocity = Vector2.zero;
+        rb.velocity = Vector2.zero;
         isSliding = false;
     }
 
