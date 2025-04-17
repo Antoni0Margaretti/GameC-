@@ -53,6 +53,7 @@ public class PlayerController : MonoBehaviour
         collisionController = GetComponent<CollisionController>();
         boxCollider = GetComponent<BoxCollider2D>();
 
+        // Сохраняем исходные параметры хитбокса
         normalSize = boxCollider.size;
         normalOffset = boxCollider.offset;
     }
@@ -65,29 +66,25 @@ public class PlayerController : MonoBehaviour
         bool grounded = collisionController.IsGrounded;
         bool touchingWall = collisionController.IsTouchingWall;
 
-        // Если цепление активно и стена отсутствует – прекращаем цепление.
+        // Если в режиме цепления/скольжения за стену, но стена перестала обнаруживаться – прекращаем цепление
         if (isSlidingOnWall && !touchingWall)
         {
             StopWallSlide();
         }
 
         // Если персонаж цепляется за стену, нажатия A/D влияют только на поворот.
-        // Здесь мы проверяем только изменение направления, не отключая цепление.
         if (isSlidingOnWall)
         {
             if (moveInput > 0 && !facingRight)
-            {
                 Flip();
-            }
             else if (moveInput < 0 && facingRight)
-            {
                 Flip();
-            }
         }
         // --- Стандартное движение (если не цепляемся за стену, не в подкате и не в приседе)
         else if (!isSlidingOnWall && !isSliding && !isCrouching)
         {
             rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
+
             if (moveInput > 0 && !facingRight)
                 Flip();
             else if (moveInput < 0 && facingRight)
@@ -98,8 +95,10 @@ public class PlayerController : MonoBehaviour
         if (Input.GetButtonDown("Jump") && (grounded || jumpCount < maxJumps || isSlidingOnWall))
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+
             if (isSlidingOnWall)
             {
+                // Wall jump: отталкиваемся от стены (направление противоположно, куда смотрит персонаж)
                 rb.linearVelocity = new Vector2((facingRight ? -1 : 1) * speed, wallJumpForce);
                 StopWallSlide();
                 timeSinceDetached = 0f;
@@ -157,7 +156,8 @@ public class PlayerController : MonoBehaviour
             boxCollider.offset = normalOffset;
         }
 
-        collisionController.ignoreFlipForWallChecks = isSlidingOnWall;
+        // Всегда используем преобразование (TransformPoint) для проверки стены – фиксированное значение.
+        collisionController.ignoreFlipForWallChecks = false;
     }
 
     // --- Методы цепления за стену (Wall Hang / Slide)
@@ -166,9 +166,9 @@ public class PlayerController : MonoBehaviour
         if (!isSlidingOnWall)
         {
             isSlidingOnWall = true;
-            wallSlideActive = false;  // Сначала персонаж висит неподвижно.
+            wallSlideActive = false;  // Сначала состояние "висения"
             rb.linearVelocity = Vector2.zero;
-            jumpCount = 0;
+            jumpCount = 0; // Сброс для возможности двойного прыжка
             StartCoroutine(WallHangCoroutine());
         }
     }
@@ -178,7 +178,7 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSeconds(wallHangTime);
         if (isSlidingOnWall)
         {
-            wallSlideActive = true;  // Переводим режим "висения" в режим ускоренного скольжения.
+            wallSlideActive = true;  // Переводим режим "висения" в режим ускоренного скольжения
         }
     }
 
@@ -194,18 +194,24 @@ public class PlayerController : MonoBehaviour
     {
         canDash = false;
         isInvulnerable = true;
+
         if (!collisionController.IsGrounded)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
         }
+
         float dashDirection = (facingRight ? 1 : -1);
         float dashSpeed = dashDistance / dashDuration;
+
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0;
         rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0);
+
         yield return new WaitForSeconds(dashDuration);
+
         rb.linearVelocity = Vector2.zero;
         rb.gravityScale = originalGravity;
+
         yield return new WaitForSeconds(dashCooldown);
         canDash = true;
         isInvulnerable = false;
@@ -226,10 +232,7 @@ public class PlayerController : MonoBehaviour
     private void Flip()
     {
         facingRight = !facingRight;
-        if (isSlidingOnWall)
-        {
-            // Сбрасываем таймер, чтобы дать grace period для цепления.
-        }
+        // Здесь можно добавить сброс таймера грейс-периода, если требуется.
         Vector3 s = transform.localScale;
         s.x *= -1;
         transform.localScale = s;
