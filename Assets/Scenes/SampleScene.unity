@@ -589,6 +589,7 @@ MonoBehaviour:
     m_Bits: 128
   wallCheckOffset: {x: -0.3, y: 0}
   wallCheckSize: {x: 0.99, y: 1}
+  ignoreFlipForWallChecks: 0
 --- !u!114 &756424252
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -604,7 +605,7 @@ MonoBehaviour:
   speed: 5
   jumpForce: 10
   maxJumps: 2
-  dashDistance: 5
+  dashDistance: 50
   dashCooldown: 1
   slideSpeed: 8
   slideDuration: 0.5
