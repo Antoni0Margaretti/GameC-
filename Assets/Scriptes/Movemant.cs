@@ -8,7 +8,7 @@ public class PlayerController : MonoBehaviour
     private Rigidbody2D rb;
     private BoxCollider2D boxCollider;
 
-    // --- Параметры для динамических хитбоксов (расширение темы)
+    // --- (Для динамических хитбоксов – тема рассматривается отдельно)
     private Vector2 normalSize, normalOffset;
 
     // --- Флаг неуязвимости (для логики получения урона)
@@ -22,7 +22,7 @@ public class PlayerController : MonoBehaviour
 
     // --- Параметры рывка (Dash)
     public float dashDistance = 5f;
-    public float dashDuration = 0.2f;  // длительность рывка (не мгновенная телепортация)
+    public float dashDuration = 0.2f;  // Длительность рывка (не телепортация)
     public float dashCooldown = 1f;
     private bool canDash = true;
 
@@ -35,13 +35,13 @@ public class PlayerController : MonoBehaviour
     private bool isCrouching = false;
 
     // --- Параметры цепления за стену (Wall Hang/Slide)
-    public float wallHangTime = 0.5f;    // время, которое персонаж висит неподвижно сразу после цепления за стену
-    public float wallSlideAcceleration = 10f;  // ускорение скольжения по стене (единиц/сек)
-    public float wallSlideMaxSpeed = 5f;       // максимальная скорость скольжения (при достижении эта величина используется как абсолютное значение)
-    public float wallJumpForce = 10f;    // сила отталкивания при wall jump
+    public float wallHangTime = 2.0f;    // Теперь персонаж висит неподвижно 2 секунды после цепления за стену
+    public float wallSlideAcceleration = 10f;  // Ускорение скольжения по стене (единиц/сек)
+    public float wallSlideMaxSpeed = 5f;       // Максимальная скорость скольжения (абсолютное значение)
+    public float wallJumpForce = 10f;    // Сила отталкивания при wall jump
     private bool isSlidingOnWall = false;
-    private bool wallSlideActive = false;  // флаг, переведён ли режим «висения» в режим ускоренного скольжения
-    public float wallDetachCooldown = 0.3f;   // время, в течение которого нельзя повторно зацепиться за стену
+    private bool wallSlideActive = false;  // Флаг, переведён ли режим "висения" в ускоренное скольжение
+    public float wallDetachCooldown = 0.3f;   // Время, в течение которого нельзя повторно зацепиться за стену
     private float timeSinceDetached = 0f;
 
     // --- Флаг направления (куда смотрит персонаж)
@@ -66,7 +66,7 @@ public class PlayerController : MonoBehaviour
         bool grounded = collisionController.IsGrounded;
         bool touchingWall = collisionController.IsTouchingWall;
 
-        // Если в режиме цепления (wall slide), но стена больше не обнаруживается – прекращаем цепление.
+        // Если в режиме цепления/скольжения за стену, но стена больше не обнаруживается – прекращаем цепление.
         if (isSlidingOnWall && !touchingWall)
         {
             StopWallSlide();
@@ -80,7 +80,7 @@ public class PlayerController : MonoBehaviour
             else if (moveInput < 0 && facingRight)
                 Flip();
         }
-        // Стандартное движение, если персонаж не в цеплении, не в подкате и не в приседе.
+        // Стандартное движение, если не цепляемся за стену, не в подкате и не в приседе.
         else if (!isSlidingOnWall && !isSliding && !isCrouching)
         {
             rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
@@ -98,7 +98,7 @@ public class PlayerController : MonoBehaviour
 
             if (isSlidingOnWall)
             {
-                // Wall jump: отталкиваемся от стены – направление противоположно направлению взгляда.
+                // Wall jump: отталкиваемся от стены (направление противоположно тому, куда смотрит персонаж)
                 rb.linearVelocity = new Vector2((facingRight ? -1 : 1) * speed, wallJumpForce);
                 StopWallSlide();
                 timeSinceDetached = 0f;
@@ -131,7 +131,7 @@ public class PlayerController : MonoBehaviour
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, newY);
         }
 
-        // --- Остальные механики (Dash, Slide, Crouch)
+        // --- Остальные механики (Dash, Slide, Crouch) остаются без изменений.
         if (Input.GetKeyDown(KeyCode.LeftShift) && canDash && !isSliding && !isCrouching)
         {
             StartCoroutine(Dash());
@@ -156,7 +156,7 @@ public class PlayerController : MonoBehaviour
             boxCollider.offset = normalOffset;
         }
 
-        // Всегда используем настройку CollisionController, чтобы корректно обрабатывать TransformPoint для проверки стены.
+        // Всегда использовать TransformPoint для проверки стены.
         collisionController.ignoreFlipForWallChecks = false;
     }
 
@@ -197,7 +197,7 @@ public class PlayerController : MonoBehaviour
 
         // Сохраняем текущую вертикальную скорость.
         float currentVertical = rb.linearVelocity.y;
-        // Если игрок находится на земле, сбрасываем вертикальную скорость для чистого горизонтального рывка.
+        // Если игрок на земле, сбрасываем вертикальную скорость.
         if (collisionController.IsGrounded)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
@@ -214,7 +214,6 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSeconds(dashDuration);
 
         rb.gravityScale = originalGravity;
-        // Если игрок на земле, сбрасываем скорость.
         if (collisionController.IsGrounded)
             rb.linearVelocity = Vector2.zero;
 
