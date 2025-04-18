@@ -702,7 +702,7 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
-  groundCheckOffset: {x: -0.7, y: -4.8}
+  groundCheckOffset: {x: -0.25, y: -4.8}
   groundCheckSize: {x: 0.8, y: 0.001}
   wallLayer:
     serializedVersion: 2
@@ -724,14 +724,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   speed: 5
   jumpForce: 10
-  maxJumps: 2
+  maxJumps: 1
   dashDistance: 100
   dashDuration: 0.5
   dashCooldown: 1
   slideSpeed: 8
   slideDuration: 0.5
-  wallHangTime: 0.5
-  wallSlideAcceleration: 10
+  wallHangTime: 10
+  wallSlideAcceleration: 1
   wallSlideMaxSpeed: 5
   wallJumpForce: 10
   wallDetachCooldown: 0.5
