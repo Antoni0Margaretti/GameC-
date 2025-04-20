@@ -77,13 +77,13 @@ public class PlayerController : MonoBehaviour
         bool grounded = collisionController.IsGrounded;
         bool touchingWall = collisionController.IsTouchingWall;
 
-        // Если персонаж цепляется за стену, но стена не обнаруживается – прекращаем цепление.
+        // Если персонаж цепляется за стену, но стена не обнаруживается, прекращаем цепление.
         if (isSlidingOnWall && !touchingWall)
         {
             StopWallSlide();
         }
 
-        // Если персонаж цепляется за стену, ввод для поворота используется только для смены направления.
+        // Если цепляется за стену, ввод для поворота используется только для смены направления.
         if (isSlidingOnWall)
         {
             if (moveInput > 0 && !facingRight)
@@ -102,24 +102,25 @@ public class PlayerController : MonoBehaviour
         }
 
         // --- Прыжок
-        if (Input.GetButtonDown("Jump"))
+        if (Input.GetButtonDown("Jump") && (grounded || jumpCount < maxJumps || isSlidingOnWall))
         {
             if (isSlidingOnWall)
             {
-                // При цеплении: определяем сторону стены (если moveInput > 0, стена справа => wallSide = 1, иначе -1).
-                wallSide = (moveInput > 0) ? 1 : -1;
-                // Если персонаж вводит направление, совпадающее со стороной стены (то есть пытается прыгнуть в ту же сторону),
-                // тогда выполняем обычный (вертикальный) прыжок.
-                if (Mathf.Abs(moveInput) > 0.01f && Mathf.Sign(moveInput) == wallSide)
+                // При цеплении: определяем сторону цепления. Если есть ввод, используем его; иначе – выводим как, например, противоположно направлению взгляда.
+                wallSide = Mathf.Abs(moveInput) > 0.01f ? (moveInput > 0 ? 1 : -1) : (facingRight ? -1 : 1);
+                // Определяем текущий вектор взгляда: положительное значение, если персонаж смотрит вправо, отрицательное – если влево.
+                int facingDir = facingRight ? 1 : -1;
+                // Если персонаж смотрит от стены, то wallSide * facingDir будет отрицательным.
+                if (wallSide * facingDir < 0)
                 {
-                    NormalJump();
+                    WallJump(); // Отпрыгивание от стены с горизонтальным импульсом.
                 }
                 else
                 {
-                    WallJump();
+                    NormalJump(); // Если персонаж всё ещё смотрит к стене, просто вертикальный прыжок.
                 }
             }
-            else if (grounded || jumpCount < maxJumps)
+            else
             {
                 NormalJump();
             }
@@ -131,6 +132,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // --- Инициирование цепления за стену (Wall Hang)
+        // Запускаем цепление, если персонаж касается стены, не на земле, ввод ненулевой и прошло достаточно времени.
         if (collisionController.IsTouchingWall && !grounded &&
             Mathf.Abs(moveInput) > 0.01f &&
             ((facingRight && moveInput > 0) || (!facingRight && moveInput < 0)) &&
@@ -143,7 +145,7 @@ public class PlayerController : MonoBehaviour
             StopWallSlide();
         }
 
-        // Если включен режим ускоренного скольжения, плавно изменяем вертикальную скорость до -wallSlideMaxSpeed.
+        // Если активен режим ускоренного скольжения, плавно изменяем вертикальную скорость до -wallSlideMaxSpeed.
         if (isSlidingOnWall && wallSlideActive && touchingWall)
         {
             float newY = Mathf.MoveTowards(rb.linearVelocity.y, -wallSlideMaxSpeed, wallSlideAcceleration * Time.deltaTime);
@@ -179,19 +181,20 @@ public class PlayerController : MonoBehaviour
         collisionController.ignoreFlipForWallChecks = false;
     }
 
-    // --- Отдельный метод для нормального прыжка (с пола или в случае, когда нет цепления)
+    // --- Нормальный прыжок (с пола или когда не цепляемся)
     private void NormalJump()
     {
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
         jumpCount++;
     }
 
-    // --- Отдельный метод для wall jump (отпрыгивание от стены)
+    // --- Отпрыгивание от стены (WallJump)
     private void WallJump()
     {
-        rb.linearVelocity = new Vector2((facingRight ? 1 : -1) * wallJumpHorizForce, wallJumpForce);
-        jumpCount = 0; // Сбрасываем счетчик прыжков
-        StopWallSlide(); // Завершаем цепление
+        // Задаём импульс: горизонтальная составляющая направлена противоположно стене.
+        rb.linearVelocity = new Vector2(-wallSide * wallJumpHorizForce, wallJumpForce);
+        jumpCount = 0; // Сброс счётчика прыжков
+        StopWallSlide();
         timeSinceDetached = 0f;
     }
 
@@ -204,10 +207,10 @@ public class PlayerController : MonoBehaviour
             wallSlideActive = false;  // Сначала персонаж висит неподвижно.
             rb.linearVelocity = Vector2.zero;
 
-            // Отключаем воздействие гравитации и выставляем его в значение, заданное в wallHangGravityScale.
+            // Отключаем гравитацию, устанавливая её в значение wallHangGravityScale.
             rb.gravityScale = wallHangGravityScale;
 
-            jumpCount = 0; // Сброс счетчика прыжков для возможности прыжка с поверхности.
+            jumpCount = 0; // Сброс счётчика прыжков
             StartCoroutine(WallHangCoroutine());
         }
     }
