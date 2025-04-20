@@ -92,21 +92,28 @@ public class PlayerController : MonoBehaviour
         }
 
         // --- Прыжок
-        if (Input.GetButtonDown("Jump") && (grounded || jumpCount < maxJumps || isSlidingOnWall))
+        // Определяем, сколько прыжков доступно сейчас:
+        // Если персонаж стоит на земле или цепляется за стену, availableJumps = 2, иначе (находясь в воздухе) доступен только один прыжок.
+        int availableJumps = (grounded || isSlidingOnWall) ? 2 : 1;
+        if (Input.GetButtonDown("Jump") && jumpCount < availableJumps)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-
             if (isSlidingOnWall)
             {
-                // Wall jump: отталкиваемся от стены – направление противоположно направлению взгляда.
+                // Выполнение wall jump: отталкиваемся от стены, при этом сбрасываем счётчик до 1 (как если бы это был первый прыжок)
                 rb.linearVelocity = new Vector2((facingRight ? -1 : 1) * speed, wallJumpForce);
                 StopWallSlide();
                 timeSinceDetached = 0f;
+                jumpCount = 1;
             }
-            jumpCount++;
+            else
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                jumpCount++;
+            }
         }
         if (grounded)
         {
+            // При касании земли восстанавливаем возможность выполнить два прыжка (первый с земли, второй в воздухе)
             jumpCount = 0;
             StopWallSlide();
         }
@@ -168,7 +175,7 @@ public class PlayerController : MonoBehaviour
             isSlidingOnWall = true;
             wallSlideActive = false;  // Сначала персонаж висит неподвижно.
             rb.linearVelocity = Vector2.zero;
-            jumpCount = 0; // Сброс для возможности двойного прыжка.
+            jumpCount = 0; // Сброс для возможности прыжка с поверхности.
             StartCoroutine(WallHangCoroutine());
         }
     }
