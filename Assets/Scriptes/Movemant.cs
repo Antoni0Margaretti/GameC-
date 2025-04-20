@@ -17,7 +17,7 @@ public class PlayerController : MonoBehaviour
     // --- Параметры движения
     public float speed = 5f;
     public float jumpForce = 10f;
-    public int maxJumps = 2;
+    public int maxJumps = 2; // Не используется напрямую – рассчитываем доступные прыжки динамически
     private int jumpCount;
 
     // --- Параметры рывка (Dash)
@@ -66,7 +66,7 @@ public class PlayerController : MonoBehaviour
         bool grounded = collisionController.IsGrounded;
         bool touchingWall = collisionController.IsTouchingWall;
 
-        // Если в режиме цепления (wall slide), но стена больше не обнаруживается – прекращаем цепление.
+        // Если цепление активно, но стена перестала обнаруживаться – прекращаем цепление.
         if (isSlidingOnWall && !touchingWall)
         {
             StopWallSlide();
@@ -80,11 +80,10 @@ public class PlayerController : MonoBehaviour
             else if (moveInput < 0 && facingRight)
                 Flip();
         }
-        // Стандартное движение, если персонаж не в цеплении, не в подкате и не в приседе.
+        // Стандартное движение, когда не цепляемся, не подкатаем и не приседаем.
         else if (!isSlidingOnWall && !isSliding && !isCrouching)
         {
             rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
-
             if (moveInput > 0 && !facingRight)
                 Flip();
             else if (moveInput < 0 && facingRight)
@@ -92,14 +91,17 @@ public class PlayerController : MonoBehaviour
         }
 
         // --- Прыжок
-        // Определяем, сколько прыжков доступно сейчас:
-        // Если персонаж стоит на земле или цепляется за стену, availableJumps = 2, иначе (находясь в воздухе) доступен только один прыжок.
-        int availableJumps = (grounded || isSlidingOnWall) ? 2 : 1;
+        // Определяем доступное количество прыжков:
+        // Если персонаж стоит на земле или цепляется за стену, availableJumps = 2;
+        // если он не касается ни пола, ни стены, то availableJumps = 1 (то есть, если он сходит с края без прыжка).
+        int availableJumps = (grounded || isSlidingOnWall) ? 2 : (jumpCount > 0 ? 2 : 1);
+
         if (Input.GetButtonDown("Jump") && jumpCount < availableJumps)
         {
             if (isSlidingOnWall)
             {
-                // Выполнение wall jump: отталкиваемся от стены, при этом сбрасываем счётчик до 1 (как если бы это был первый прыжок)
+                // Выполняем wall‑jump: отталкиваемся от стены, при этом сбрасывая цепление и устанавливая jumpCount = 1,
+                // чтобы после wall‑jump оставался один дополнительный прыжок (в воздухе).
                 rb.linearVelocity = new Vector2((facingRight ? -1 : 1) * speed, wallJumpForce);
                 StopWallSlide();
                 timeSinceDetached = 0f;
@@ -111,14 +113,15 @@ public class PlayerController : MonoBehaviour
                 jumpCount++;
             }
         }
+        // Если персонаж касается земли, восстанавливаем возможность двойного прыжка.
         if (grounded)
         {
-            // При касании земли восстанавливаем возможность выполнить два прыжка (первый с земли, второй в воздухе)
             jumpCount = 0;
             StopWallSlide();
         }
 
         // --- Инициирование цепления за стену (Wall Hang)
+        // Условие: персонаж касается стены, не на земле, имеет ненулевой горизонтальный ввод в направлении стены и выполнен cooldown.
         if (collisionController.IsTouchingWall && !grounded &&
             Mathf.Abs(moveInput) > 0.01f &&
             ((facingRight && moveInput > 0) || (!facingRight && moveInput < 0)) &&
@@ -131,7 +134,7 @@ public class PlayerController : MonoBehaviour
             StopWallSlide();
         }
 
-        // Если режим ускоренного скольжения активен, постепенно увеличиваем вертикальную скорость до –wallSlideMaxSpeed.
+        // Если активен режим ускоренного скольжения, плавно изменяем вертикальную скорость до -wallSlideMaxSpeed.
         if (isSlidingOnWall && wallSlideActive && touchingWall)
         {
             float newY = Mathf.MoveTowards(rb.linearVelocity.y, -wallSlideMaxSpeed, wallSlideAcceleration * Time.deltaTime);
@@ -163,7 +166,7 @@ public class PlayerController : MonoBehaviour
             boxCollider.offset = normalOffset;
         }
 
-        // Всегда используем настройку CollisionController, чтобы корректно обрабатывать TransformPoint для проверки стены.
+        // Всегда используем настройку CollisionController (например, для корректного применения TransformPoint)
         collisionController.ignoreFlipForWallChecks = false;
     }
 
@@ -175,7 +178,7 @@ public class PlayerController : MonoBehaviour
             isSlidingOnWall = true;
             wallSlideActive = false;  // Сначала персонаж висит неподвижно.
             rb.linearVelocity = Vector2.zero;
-            jumpCount = 0; // Сброс для возможности прыжка с поверхности.
+            jumpCount = 0; // Сброс прыжкового счётчика для возможности прыжка с поверхности.
             StartCoroutine(WallHangCoroutine());
         }
     }
@@ -204,7 +207,7 @@ public class PlayerController : MonoBehaviour
 
         // Сохраняем текущую вертикальную скорость.
         float currentVertical = rb.linearVelocity.y;
-        // Если игрок находится на земле, сбрасываем вертикальную скорость для чистого горизонтального рывка.
+        // Если игрок на земле, сбрасываем вертикальную скорость для чистого горизонтального рывка.
         if (collisionController.IsGrounded)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
@@ -221,7 +224,6 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSeconds(dashDuration);
 
         rb.gravityScale = originalGravity;
-        // Если игрок на земле, сбрасываем скорость.
         if (collisionController.IsGrounded)
             rb.linearVelocity = Vector2.zero;
 
