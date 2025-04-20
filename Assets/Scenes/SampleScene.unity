@@ -722,8 +722,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf448b4905daac54693e09402ca15381, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  collisionController: {fileID: 0}
-  isInvulnerable: 0
   speed: 5
   jumpForce: 10
   maxJumps: 1
@@ -732,13 +730,11 @@ MonoBehaviour:
   dashCooldown: 1
   slideSpeed: 8
   slideDuration: 0.5
-  isCrouching: 0
-  wallHangTime: 10
-  wallSlideAcceleration: 1
-  wallSlideMaxSpeed: 5
+  wallHangTime: 1
+  wallSlideAcceleration: 10
+  wallSlideMaxSpeed: 30
   wallJumpForce: 10
   wallDetachCooldown: 0.5
-  facingRight: 1
 --- !u!50 &756424253
 Rigidbody2D:
   serializedVersion: 5
