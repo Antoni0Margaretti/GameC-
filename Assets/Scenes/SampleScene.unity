@@ -428,7 +428,7 @@ Transform:
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.4931, y: -2.2372, z: -10}
+  m_LocalPosition: {x: -8.161, y: -2.901, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -635,7 +635,7 @@ Transform:
   m_GameObject: {fileID: 756424247}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.4931, y: -2.2372, z: 0}
+  m_LocalPosition: {x: -8.161, y: -2.901, z: 0}
   m_LocalScale: {x: 0.22, y: 0.22, z: 0.22}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -708,7 +708,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 128
   wallCheckOffset: {x: -0.3, y: 0}
-  wallCheckSize: {x: 0.99, y: 2.1}
+  wallCheckSize: {x: 0.99, y: 2}
   ignoreFlipForWallChecks: 0
 --- !u!114 &756424252
 MonoBehaviour:
@@ -722,6 +722,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf448b4905daac54693e09402ca15381, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  collisionController: {fileID: 0}
+  isInvulnerable: 0
   speed: 5
   jumpForce: 10
   maxJumps: 1
@@ -730,11 +732,13 @@ MonoBehaviour:
   dashCooldown: 1
   slideSpeed: 8
   slideDuration: 0.5
+  isCrouching: 0
   wallHangTime: 10
   wallSlideAcceleration: 1
   wallSlideMaxSpeed: 5
   wallJumpForce: 10
   wallDetachCooldown: 0.5
+  facingRight: 1
 --- !u!50 &756424253
 Rigidbody2D:
   serializedVersion: 5
@@ -750,7 +754,7 @@ Rigidbody2D:
   m_Mass: 1
   m_LinearDamping: 0
   m_AngularDamping: 0.05
-  m_GravityScale: 1
+  m_GravityScale: 2
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -1571,7 +1575,7 @@ Transform:
   m_GameObject: {fileID: 1071446445}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.4931, y: -2.2372, z: -10}
+  m_LocalPosition: {x: -8.161, y: -2.901, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
