@@ -276,39 +276,27 @@ public class PlayerController : MonoBehaviour
     private IEnumerator Dash()
     {
         canDash = false;
-        // Получаем текущую вертикальную скорость, чтобы сохранить её.
         float currentVertical = rb.linearVelocity.y;
-
-        // Если персонаж на земле, сбрасываем вертикальную скорость для более чистого рывка.
         if (collisionController.IsGrounded)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
             currentVertical = 0;
         }
-
-        // Направление рывка определяется ориентацией персонажа.
         float dashDirection = (facingRight ? 1 : -1);
-        // Вычисляем скорость рывка.
         float dashSpeed = dashDistance / dashDuration;
-
-        // Сохраняем текущую гравитацию и временно отключаем её, чтобы рывок не тормозился гравитацией.
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0;
-
-        // Применяем скорость рывка на заданное время.
         rb.linearVelocity = new Vector2(dashDirection * dashSpeed, currentVertical);
         yield return new WaitForSeconds(dashDuration);
-
-        // Востанавливаем гравитацию.
         rb.gravityScale = originalGravity;
-
-        // Если персонаж на земле, сбрасываем горизонтальную скорость для резкого остановления рывка.
-        if (collisionController.IsGrounded)
-            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
-
+        // Удаляем принудительное обнуление горизонтальной скорости, чтобы импульс сохранялся.
+        // if (collisionController.IsGrounded)
+        //     rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
         yield return new WaitForSeconds(dashCooldown);
         canDash = true;
+        isInvulnerable = false;
     }
+
 
 
     // --- Подкат (Slide)
