@@ -15,12 +15,12 @@ public class PlayerController : MonoBehaviour
     private int jumpCount;
 
     // --- Параметры рывка (Dash)
-    public float dashDistance = 5f;
-    public float dashSpeed = 20f;          // скорость рывка (независима от dashDistance)
+    public float dashDistance = 5f;         // задаёт, на какое расстояние должен быть выполнен рывок
+    public float dashSpeed = 20f;           // задаёт скорость рывка
     public float dashCooldown = 1f;
     private bool canDash = true;
     private bool isInvulnerable = false;
-    // Флаг, блокирующий обычное обновление скорости во время рывка.
+    // Флаг, блокирующий обычное обновление скорости во время рывка
     private bool isDashing = false;
 
     // --- Параметры подката (Slide) и приседа (Crouch)
@@ -89,12 +89,12 @@ public class PlayerController : MonoBehaviour
         }
 
         // Обработка горизонтального движения:
-        // Если персонаж не цепляется, не слайдит, не приседает, не на блокировке после wall jump и не рывке:
+        // Если персонаж не выполняет рывок, не цепляется, не слайдит, не приседает, не заблокирован после wall jump.
         if (!isDashing && !isSlidingOnWall && !isSliding && !isCrouching && !isWallJumping)
         {
             if (grounded)
             {
-                rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
+                rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
                 if (moveInput > 0 && !facingRight)
                     Flip();
                 else if (moveInput < 0 && facingRight)
@@ -104,8 +104,8 @@ public class PlayerController : MonoBehaviour
             {
                 if (Mathf.Abs(moveInput) > 0.01f)
                 {
-                    float newX = Mathf.Lerp(rb.linearVelocity.x, moveInput * speed, 5f * Time.deltaTime);
-                    rb.linearVelocity = new Vector2(newX, rb.linearVelocity.y);
+                    float newX = Mathf.Lerp(rb.velocity.x, moveInput * speed, 5f * Time.deltaTime);
+                    rb.velocity = new Vector2(newX, rb.velocity.y);
                     if (moveInput > 0 && !facingRight)
                         Flip();
                     else if (moveInput < 0 && facingRight)
@@ -129,11 +129,11 @@ public class PlayerController : MonoBehaviour
             {
                 if ((wallContactSide == 1 && facingRight) || (wallContactSide == -1 && !facingRight))
                 {
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                    rb.velocity = new Vector2(rb.velocity.x, jumpForce);
                 }
                 else
                 {
-                    rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
+                    rb.velocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
                     StartCoroutine(WallJumpLockCoroutine());
                 }
                 StopWallSlide();
@@ -142,9 +142,9 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                // Добавляем горизонтальный импульс прыжка, пропорционально текущей горизонтальной скорости.
-                float extraX = rb.linearVelocity.x * jumpImpulseFactor;
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x + extraX, jumpForce);
+                // Добавляем горизонтальный импульс прыжка, пропорциональный текущей горизонтальной скорости.
+                float extraX = rb.velocity.x * jumpImpulseFactor;
+                rb.velocity = new Vector2(rb.velocity.x + extraX, jumpForce);
                 jumpCount++;
             }
         }
@@ -170,8 +170,8 @@ public class PlayerController : MonoBehaviour
 
         if (isSlidingOnWall && wallSlideActive && touchingWall)
         {
-            float newY = Mathf.MoveTowards(rb.linearVelocity.y, -wallSlideMaxSpeed, wallSlideAcceleration * Time.deltaTime);
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, newY);
+            float newY = Mathf.MoveTowards(rb.velocity.y, -wallSlideMaxSpeed, wallSlideAcceleration * Time.deltaTime);
+            rb.velocity = new Vector2(rb.velocity.x, newY);
         }
 
         // --- Остальные механики (Dash, Slide, Crouch)
@@ -193,16 +193,14 @@ public class PlayerController : MonoBehaviour
         // Подкат (Slide) и присед (Crouch) – логика только на земле.
         if (grounded)
         {
-            // Если имеется горизонтальный ввод и нажата клавиша Ctrl – запускаем подкат.
             if (Input.GetKeyDown(KeyCode.LeftControl) && Mathf.Abs(moveInput) > 0.01f && !isSliding)
             {
                 StartCoroutine(Slide(moveInput));
             }
-            // Если горизонтального ввода нет, а зажаты Ctrl или S – включаем режим приседа.
             else if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.S)) && Mathf.Abs(moveInput) < 0.01f)
             {
                 isCrouching = true;
-                rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+                rb.velocity = new Vector2(0, rb.velocity.y);
             }
             else if (!Input.GetKey(KeyCode.LeftControl) && !Input.GetKey(KeyCode.S))
             {
@@ -214,11 +212,9 @@ public class PlayerController : MonoBehaviour
             isCrouching = false;
         }
 
-        // Если персонаж находится в воздухе, имеет ненулевую горизонтальную скорость
-        // и зажат Ctrl – при приземлении автоматически запускаем подкат.
-        if (grounded && Input.GetKey(KeyCode.LeftControl) && Mathf.Abs(rb.linearVelocity.x) > 0.1f && !isSliding && !isCrouching)
+        if (grounded && Input.GetKey(KeyCode.LeftControl) && Mathf.Abs(rb.velocity.x) > 0.1f && !isSliding && !isCrouching)
         {
-            StartCoroutine(Slide(rb.linearVelocity.x));
+            StartCoroutine(Slide(rb.velocity.x));
         }
 
         if (!isSliding && !isCrouching)
@@ -238,10 +234,9 @@ public class PlayerController : MonoBehaviour
         {
             isSlidingOnWall = true;
             wallSlideActive = false;   // Сначала персонаж висит неподвижно.
-            rb.linearVelocity = Vector2.zero;
+            rb.velocity = Vector2.zero;
             rb.gravityScale = wallHangGravityScale;
             jumpCount = 0;
-            // Определяем сторону цепления по направлению персонажа:
             wallContactSide = facingRight ? 1 : -1;
             StartCoroutine(WallHangCoroutine());
         }
@@ -269,20 +264,21 @@ public class PlayerController : MonoBehaviour
     {
         isDashing = true;
         canDash = false;
-        float currentVertical = rb.linearVelocity.y;
+        float currentVertical = rb.velocity.y;
         if (collisionController.IsGrounded)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
+            rb.velocity = new Vector2(rb.velocity.x, 0);
             currentVertical = 0;
         }
         float dashDirection = (facingRight ? 1 : -1);
-        float duration = dashDistance / dashSpeed;  // длительность рассчитывается как dashDistance / dashSpeed.
+        // Вычисляем длительность рывка так, чтобы пройденное расстояние было равным dashDistance.
+        float duration = dashDistance / dashSpeed;
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0;
-        rb.linearVelocity = new Vector2(dashDirection * dashSpeed, currentVertical);
+        rb.velocity = new Vector2(dashDirection * dashSpeed, currentVertical);
         yield return new WaitForSeconds(duration);
         rb.gravityScale = originalGravity;
-        yield return new WaitForSeconds(dashCooldown);
+        yield return new WaitForSeconds(0.1f);
         isDashing = false;
         canDash = true;
         isInvulnerable = false;
@@ -294,21 +290,21 @@ public class PlayerController : MonoBehaviour
         isSliding = true;
         float slideDirection = Mathf.Sign(moveInput);
         float initialVel = slideDirection * slideSpeed * slideBoost;
-        rb.linearVelocity = new Vector2(initialVel, rb.linearVelocity.y);
+        rb.velocity = new Vector2(initialVel, rb.velocity.y);
         float elapsed = 0f;
         while (elapsed < slideDuration)
         {
             if (!collisionController.IsGrounded)
                 break;
             float currentX = Mathf.Lerp(initialVel, 0, elapsed / slideDuration);
-            rb.linearVelocity = new Vector2(currentX, rb.linearVelocity.y);
+            rb.velocity = new Vector2(currentX, rb.velocity.y);
             elapsed += Time.deltaTime;
             yield return null;
         }
         isSliding = false;
         if (collisionController.IsGrounded)
         {
-            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+            rb.velocity = new Vector2(0, rb.velocity.y);
             if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.S))
                 isCrouching = true;
         }
