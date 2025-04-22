@@ -94,7 +94,7 @@ public class PlayerController : MonoBehaviour
         {
             if (grounded)
             {
-                rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
+                rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
                 if (moveInput > 0 && !facingRight)
                     Flip();
                 else if (moveInput < 0 && facingRight)
@@ -104,8 +104,8 @@ public class PlayerController : MonoBehaviour
             {
                 if (Mathf.Abs(moveInput) > 0.01f)
                 {
-                    float newX = Mathf.Lerp(rb.linearVelocity.x, moveInput * speed, 5f * Time.deltaTime);
-                    rb.linearVelocity = new Vector2(newX, rb.linearVelocity.y);
+                    float newX = Mathf.Lerp(rb.velocity.x, moveInput * speed, 5f * Time.deltaTime);
+                    rb.velocity = new Vector2(newX, rb.velocity.y);
                     if (moveInput > 0 && !facingRight)
                         Flip();
                     else if (moveInput < 0 && facingRight)
@@ -116,7 +116,7 @@ public class PlayerController : MonoBehaviour
         // Если персонаж находится на земле и зажаты Ctrl или S, горизонтальное движение игнорируется – режим приседа.
         else if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.S)) && grounded)
         {
-            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+            rb.velocity = new Vector2(0, rb.velocity.y);
             isCrouching = true;
         }
 
@@ -140,11 +140,11 @@ public class PlayerController : MonoBehaviour
                 // • Если же он уже смотрит от стены – выполняется wall jump с горизонтальным импульсом.
                 if ((wallContactSide == 1 && facingRight) || (wallContactSide == -1 && !facingRight))
                 {
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                    rb.velocity = new Vector2(rb.velocity.x, jumpForce);
                 }
                 else
                 {
-                    rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
+                    rb.velocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
                     StartCoroutine(WallJumpLockCoroutine());
                 }
                 StopWallSlide();
@@ -153,7 +153,7 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                rb.velocity = new Vector2(rb.velocity.x, jumpForce);
                 jumpCount++;
             }
         }
@@ -179,8 +179,8 @@ public class PlayerController : MonoBehaviour
 
         if (isSlidingOnWall && wallSlideActive && touchingWall)
         {
-            float newY = Mathf.MoveTowards(rb.linearVelocity.y, -wallSlideMaxSpeed, wallSlideAcceleration * Time.deltaTime);
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, newY);
+            float newY = Mathf.MoveTowards(rb.velocity.y, -wallSlideMaxSpeed, wallSlideAcceleration * Time.deltaTime);
+            rb.velocity = new Vector2(rb.velocity.x, newY);
         }
 
         // --- Остальные механики (Dash, Slide, Crouch)
@@ -203,7 +203,7 @@ public class PlayerController : MonoBehaviour
             else if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.S)) && Mathf.Abs(moveInput) < 0.01f)
             {
                 isCrouching = true;
-                rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+                rb.velocity = new Vector2(0, rb.velocity.y);
             }
             else if (!Input.GetKey(KeyCode.LeftControl) && !Input.GetKey(KeyCode.S))
             {
@@ -231,7 +231,7 @@ public class PlayerController : MonoBehaviour
         {
             isSlidingOnWall = true;
             wallSlideActive = false;  // сначала персонаж висит неподвижно
-            rb.linearVelocity = Vector2.zero;
+            rb.velocity = Vector2.zero;
             rb.gravityScale = wallHangGravityScale;
             jumpCount = 0;
             wallContactSide = facingRight ? 1 : -1;
@@ -260,21 +260,21 @@ public class PlayerController : MonoBehaviour
     private IEnumerator Dash()
     {
         canDash = false;
-        float currentVertical = rb.linearVelocity.y;
+        float currentVertical = rb.velocity.y;
         if (collisionController.IsGrounded)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
+            rb.velocity = new Vector2(rb.velocity.x, 0);
             currentVertical = 0;
         }
         float dashDirection = (facingRight ? 1 : -1);
         float dashSpeed = dashDistance / dashDuration;
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0;
-        rb.linearVelocity = new Vector2(dashDirection * dashSpeed, currentVertical);
+        rb.velocity = new Vector2(dashDirection * dashSpeed, currentVertical);
         yield return new WaitForSeconds(dashDuration);
         rb.gravityScale = originalGravity;
         if (collisionController.IsGrounded)
-            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+            rb.velocity = new Vector2(0, rb.velocity.y);
         yield return new WaitForSeconds(dashCooldown);
         canDash = true;
         isInvulnerable = false;
@@ -292,7 +292,7 @@ public class PlayerController : MonoBehaviour
         isSliding = true;
         float slideDirection = Mathf.Sign(moveInput);
         float initialVel = slideDirection * slideSpeed * slideBoost;
-        rb.linearVelocity = new Vector2(initialVel, rb.linearVelocity.y);
+        rb.velocity = new Vector2(initialVel, rb.velocity.y);
         float elapsed = 0f;
         while (elapsed < slideDuration)
         {
@@ -302,7 +302,7 @@ public class PlayerController : MonoBehaviour
                 break;
             }
             float currentX = Mathf.Lerp(initialVel, 0, elapsed / slideDuration);
-            rb.linearVelocity = new Vector2(currentX, rb.linearVelocity.y);
+            rb.velocity = new Vector2(currentX, rb.velocity.y);
             elapsed += Time.deltaTime;
             yield return null;
         }
@@ -311,7 +311,7 @@ public class PlayerController : MonoBehaviour
         // если клавиши Ctrl или S зажаты, переходим в режим приседа.
         if (collisionController.IsGrounded)
         {
-            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+            rb.velocity = new Vector2(0, rb.velocity.y);
             if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.S))
             {
                 isCrouching = true;
