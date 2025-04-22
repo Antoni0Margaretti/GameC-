@@ -323,13 +323,4 @@ public class PlayerController : MonoBehaviour
         s.x *= -1;
         transform.localScale = s;
     }
-
-    // --- Блокировка горизонтального управления после wall jump,
-    // чтобы сохранялся импульс wall jump (импульс не затирался обновлением ввода)
-    private IEnumerator WallJumpLockCoroutine()
-    {
-        isWallJumping = true;
-        yield return new WaitForSeconds(wallJumpLockDuration);
-        isWallJumping = false;
-    }
 }
