@@ -10,8 +10,8 @@ public class PlayerController : MonoBehaviour
 
     // --- Параметры движения
     public float speed = 5f;
-    // Коэффициент, определяющий силу дополнительного горизонтального воздействия в воздухе.
-    // Значение 0 означает отсутствие дополнительного ускорения, 1 – такой же, как на земле.
+    // Коэффициент, определяющий дополнительное изменение скорости в воздухе.
+    // Значение 0 – отсутствие дополнительного влияния, 1 – такое же, как на земле.
     public float airControlFactor = 0.3f;
     public float jumpForce = 10f;
     public int maxJumps = 2;
@@ -23,7 +23,7 @@ public class PlayerController : MonoBehaviour
     public float dashCooldown = 1f;
     private bool canDash = true;
     private bool isInvulnerable = false;
-    // Флаг, блокирующий обновление обычного движения во время рывка.
+    // Флаг, блокирующий обычное обновление скорости во время рывка
     private bool isDashing = false;
 
     // --- Параметры подката (Slide) и приседа (Crouch)
@@ -43,14 +43,14 @@ public class PlayerController : MonoBehaviour
     public float wallJumpForce = 10f;         // вертикальная компонента wall jump
     public float wallJumpHorizForce = 5f;     // горизонтальная составляющая wall jump (фиксированная)
     private bool isSlidingOnWall = false;
-    private bool wallSlideActive = false;     // false – режим "висения", true – режим ускоренного скольжения
+    private bool wallSlideActive = false;     // false – режим "висения", true – ускоренное скольжение
     public float wallDetachCooldown = 0.3f;     // минимальное время между цеплениями
     private float timeSinceDetached = 0f;
-    // Сторона стены, к которой цепляемся: 1 – если стена справа; -1 – если слева.
+    // Сторона стены, к которой цепляемся: 1 – если справа, -1 – если слева.
     private int wallContactSide = 0;
 
     // --- Блокировка горизонтального управления после wall jump,
-    // позволяющая сохранить горизонтальный импульс, не затираемый обычным вводом.
+    // позволяющая сохранить импульс, не затираемый обычным вводом.
     private bool isWallJumping = false;
     public float wallJumpLockDuration = 0.2f;
 
@@ -84,19 +84,19 @@ public class PlayerController : MonoBehaviour
         bool grounded = collisionController.IsGrounded;
         bool touchingWall = collisionController.IsTouchingWall;
 
-        // Если персонаж цепляется за стену, но стена пропадает – прекращаем цепление.
+        // Если цепляемся за стену, но стена пропадает – прекращаем цепление.
         if (isSlidingOnWall && !touchingWall)
         {
             StopWallSlide();
         }
 
         // Обработка горизонтального движения:
-        // Если не выполняется рывок, не слайд, не присед, не wall jump и не цепление – обновляем обычное управление.
+        // Если не рывок, не цепление, не подкат, не присед, не wall jump –
         if (!isDashing && !isSlidingOnWall && !isSliding && !isCrouching && !isWallJumping)
         {
             if (grounded)
             {
-                // На земле применяем прямое управление.
+                // На земле – напрямую задаем скорость.
                 rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
                 if (moveInput > 0 && !facingRight)
                     Flip();
@@ -105,14 +105,13 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                // В воздухе добавляем небольшое изменение горизонтальной скорости через AddForce.
+                // В воздухе добавляем небольшой импульс через AddForce.
                 if (Mathf.Abs(moveInput) > 0.01f)
                 {
                     float airAccel = speed * airControlFactor;
-                    // Умножение на Time.deltaTime делает силу независимой от кадровой частоты.
-                    rb.AddForce(new Vector2(moveInput * airAccel, 0) * Time.deltaTime, ForceMode2D.Force);
+                    // Применяем силу напрямую, без Time.deltaTime – так изменение скорости будет ощутимым.
+                    rb.AddForce(new Vector2(moveInput * airAccel, 0), ForceMode2D.Force);
 
-                    // Сохраняем ориентацию при вводе.
                     if (moveInput > 0 && !facingRight)
                         Flip();
                     else if (moveInput < 0 && facingRight)
@@ -121,7 +120,7 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // Если персонаж цепляется за стену, ввод используется только для смены направления.
+        // Если цепляемся за стену – ввод используется только для смены направления.
         if (isSlidingOnWall)
         {
             if (moveInput > 0 && !facingRight)
@@ -150,7 +149,6 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                // При обычном прыжке добавляем горизонтальный импульс по текущей скорости.
                 float extraX = rb.velocity.x * jumpImpulseFactor;
                 rb.velocity = new Vector2(rb.velocity.x + extraX, jumpForce);
                 jumpCount++;
@@ -196,6 +194,7 @@ public class PlayerController : MonoBehaviour
                 StartCoroutine(Dash());
             }
         }
+
         // Подкат (Slide) и присед (Crouch) – работают только на земле.
         if (grounded)
         {
@@ -218,7 +217,7 @@ public class PlayerController : MonoBehaviour
             isCrouching = false;
         }
 
-        // Если персонаж в воздухе, имеет ненулевую горизонтальную скорость и удерживается Ctrl – при приземлении запускаем подкат.
+        // Если персонаж в воздухе и удерживается Ctrl – при приземлении запускаем подкат.
         if (grounded && Input.GetKey(KeyCode.LeftControl) && Mathf.Abs(rb.velocity.x) > 0.1f && !isSliding && !isCrouching)
         {
             StartCoroutine(Slide(rb.velocity.x));
@@ -327,7 +326,7 @@ public class PlayerController : MonoBehaviour
     }
 
     // --- Блокировка горизонтального управления после wall jump,
-    // чтобы импульс сохранялся и не затирался обычным обновлением ввода.
+    // чтобы импульс сохранялся и не затирался обычным вводом.
     private IEnumerator WallJumpLockCoroutine()
     {
         isWallJumping = true;
