@@ -87,7 +87,7 @@ public class PlayerController : MonoBehaviour
         // Обычное движение, если не цепляемся, не скользим и не приседаем.
         else if (!isSlidingOnWall && !isSliding && !isCrouching)
         {
-            rb.velocity = new Vector2(moveInput * speed, rb.velocity.y);
+            rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
             if (moveInput > 0 && !facingRight)
                 Flip();
             else if (moveInput < 0 && facingRight)
@@ -148,8 +148,8 @@ public class PlayerController : MonoBehaviour
         // Обновляем wall slide только если не находимся в состоянии wall jump.
         if (isSlidingOnWall && wallSlideActive && touchingWall && !inWallJumpState)
         {
-            float newY = Mathf.MoveTowards(rb.velocity.y, -wallSlideMaxSpeed, wallSlideAcceleration * Time.deltaTime);
-            rb.velocity = new Vector2(rb.velocity.x, newY);
+            float newY = Mathf.MoveTowards(rb.linearVelocity.y, -wallSlideMaxSpeed, wallSlideAcceleration * Time.deltaTime);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, newY);
         }
 
         // --- Остальные механики (Dash, Slide, Crouch)
@@ -164,7 +164,7 @@ public class PlayerController : MonoBehaviour
         else if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.S)) && grounded && Mathf.Abs(moveInput) < 0.01f)
         {
             isCrouching = true;
-            rb.velocity = Vector2.zero;
+            rb.linearVelocity = Vector2.zero;
         }
         else if (!Input.GetKey(KeyCode.LeftControl) && !Input.GetKey(KeyCode.S))
         {
@@ -175,13 +175,13 @@ public class PlayerController : MonoBehaviour
     // --- Нормальный прыжок (обычный вертикальный прыжок)
     private void NormalJump()
     {
-        rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
     }
 
     // --- Wall Jump: отталкивание от стены с заданным горизонтальным и вертикальным импульсом.
     private void WallJump()
     {
-        rb.velocity = new Vector2(-wallSide * wallJumpHorizForce, wallJumpForce);
+        rb.linearVelocity = new Vector2(-wallSide * wallJumpHorizForce, wallJumpForce);
         jumpCount = 0;
         StopWallSlide();
         timeSinceDetached = 0f;
@@ -202,7 +202,7 @@ public class PlayerController : MonoBehaviour
         {
             isSlidingOnWall = true;
             wallSlideActive = false;  // Сначала персонаж висит неподвижно.
-            rb.velocity = Vector2.zero;
+            rb.linearVelocity = Vector2.zero;
             rb.gravityScale = wallHangGravityScale;
             jumpCount = 0;
             StartCoroutine(WallHangCoroutine());
@@ -230,21 +230,21 @@ public class PlayerController : MonoBehaviour
     private IEnumerator Dash()
     {
         canDash = false;
-        float currentVertical = rb.velocity.y;
+        float currentVertical = rb.linearVelocity.y;
         if (collisionController.IsGrounded)
         {
-            rb.velocity = new Vector2(rb.velocity.x, 0);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
             currentVertical = 0;
         }
         float dashDir = (facingRight ? 1 : -1);
         float dashSpeed = dashDistance / dashDuration;
         float origGravity = rb.gravityScale;
         rb.gravityScale = 0;
-        rb.velocity = new Vector2(dashDir * dashSpeed, currentVertical);
+        rb.linearVelocity = new Vector2(dashDir * dashSpeed, currentVertical);
         yield return new WaitForSeconds(dashDuration);
         rb.gravityScale = origGravity;
         if (collisionController.IsGrounded)
-            rb.velocity = Vector2.zero;
+            rb.linearVelocity = Vector2.zero;
         yield return new WaitForSeconds(dashCooldown);
         canDash = true;
     }
@@ -254,9 +254,9 @@ public class PlayerController : MonoBehaviour
     {
         isSliding = true;
         float slideDir = Mathf.Sign(moveInput);
-        rb.velocity = new Vector2(slideDir * slideSpeed, rb.velocity.y);
+        rb.linearVelocity = new Vector2(slideDir * slideSpeed, rb.linearVelocity.y);
         yield return new WaitForSeconds(slideDuration);
-        rb.velocity = Vector2.zero;
+        rb.linearVelocity = Vector2.zero;
         isSliding = false;
     }
 
