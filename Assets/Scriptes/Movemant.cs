@@ -16,12 +16,11 @@ public class PlayerController : MonoBehaviour
 
     // --- Параметры рывка (Dash)
     public float dashDistance = 5f;
-    public float dashDuration = 0.2f;      // длительность рывка (не мгновенная телепортация)
+    public float dashSpeed = 20f;          // скорость рывка (независима от dashDistance)
     public float dashCooldown = 1f;
     private bool canDash = true;
     private bool isInvulnerable = false;
-
-    // Флаг, блокирующий обычное обновление скорости во время рывка
+    // Флаг, блокирующий обычное обновление скорости во время рывка.
     private bool isDashing = false;
 
     // --- Параметры подката (Slide) и приседа (Crouch)
@@ -90,8 +89,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // Обработка горизонтального движения:
-        // Если персонаж не цепляется, не слайдит, не приседает, не находится на блокировке после wall jump и не рывок,
-        // выполняем стандартное обновление скорости.
+        // Если персонаж не цепляется, не слайдит, не приседает, не на блокировке после wall jump и не рывке:
         if (!isDashing && !isSlidingOnWall && !isSliding && !isCrouching && !isWallJumping)
         {
             if (grounded)
@@ -144,7 +142,7 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                // Добавляем горизонтальный импульс прыжка, пропорциональный текущей горизонтальной скорости.
+                // Добавляем горизонтальный импульс прыжка, пропорционально текущей горизонтальной скорости.
                 float extraX = rb.linearVelocity.x * jumpImpulseFactor;
                 rb.linearVelocity = new Vector2(rb.linearVelocity.x + extraX, jumpForce);
                 jumpCount++;
@@ -179,7 +177,7 @@ public class PlayerController : MonoBehaviour
         // --- Остальные механики (Dash, Slide, Crouch)
         if (Input.GetKeyDown(KeyCode.LeftShift) && canDash && !isSliding && !isCrouching)
         {
-            // Если персонаж цепляется за стену, рывок разрешён только если он смотрит от стены.
+            // Если персонаж цепляется за стену, рывок разрешается только если он смотрит от стены.
             if (isSlidingOnWall)
             {
                 if ((wallContactSide == 1 && !facingRight) || (wallContactSide == -1 && facingRight))
@@ -278,11 +276,11 @@ public class PlayerController : MonoBehaviour
             currentVertical = 0;
         }
         float dashDirection = (facingRight ? 1 : -1);
-        float dashSpeed = dashDistance / dashDuration;
+        float duration = dashDistance / dashSpeed;  // длительность рассчитывается как dashDistance / dashSpeed.
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0;
         rb.linearVelocity = new Vector2(dashDirection * dashSpeed, currentVertical);
-        yield return new WaitForSeconds(dashDuration);
+        yield return new WaitForSeconds(duration);
         rb.gravityScale = originalGravity;
         yield return new WaitForSeconds(dashCooldown);
         isDashing = false;
