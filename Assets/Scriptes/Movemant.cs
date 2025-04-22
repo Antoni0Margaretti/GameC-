@@ -39,8 +39,7 @@ public class PlayerController : MonoBehaviour
     private bool wallSlideActive = false;  // false – режим "висения", true – режим ускоренного скольжения
     public float wallDetachCooldown = 0.3f;   // время, в течение которого нельзя повторно зацепиться за ту же стену
     private float timeSinceDetached = 0f;
-    // Добавляем переменную для хранения стороны стены, к которой цепляемся:
-    // 1, если стена справа и -1, если слева.
+    // Храним сторону стены (1 если стена справа, -1 если слева)
     private int wallContactSide = 0;
 
     // --- Параметры гравитации при цеплении
@@ -106,22 +105,16 @@ public class PlayerController : MonoBehaviour
             {
                 /* 
                    Доработанная механика wall jump:
-                   Если персонаж цепляется за стену и уже повернулся (смотрит в сторону, противоположную цеплению),
-                   то прыжок выполняется с горизонтальным импульсом.
-                   Для определения стороны стены мы используем переменную wallContactSide, которая устанавливается в StartWallHang().
-                   Если wallContactSide равен 1 (стена справа) и игрок повернулся налево (facingRight == false),
-                   либо если wallContactSide равен -1 (стена слева) и игрок повернулся направо (facingRight == true),
-                   то применяется горизонтальный импульс. Иначе выполняется обычный вертикальный прыжок.
+                   Если персонаж цепляется за стену, то мы хотим, чтобы он отталкивался от неё с горизонтальным импульсом.
+                   Если персонаж всё ещё смотрит в сторону стены (то есть его направление совпадает с изначальной стороной цепления),
+                   то мы автоматически переворачиваем его с помощью Flip(), чтобы он смотрел от стены, 
+                   а затем применяем горизонтальный импульс.
                 */
-                if ((wallContactSide == 1 && !facingRight) || (wallContactSide == -1 && facingRight))
+                if ((wallContactSide == 1 && facingRight) || (wallContactSide == -1 && !facingRight))
                 {
-                    rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
+                    Flip();
                 }
-                else
-                {
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-                    jumpCount++;
-                }
+                rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
                 StopWallSlide();
                 timeSinceDetached = 0f;
                 jumpCount = 0;
@@ -202,9 +195,8 @@ public class PlayerController : MonoBehaviour
             // Отключаем воздействие гравитации, устанавливая его в значение wallHangGravityScale.
             rb.gravityScale = wallHangGravityScale;
             jumpCount = 0;
-            // Определяем сторону стены, с которой цепляемся:
-            // Если игрок движется вправо (facingRight && moveInput > 0) -> стена справа, wallContactSide = 1.
-            // Если игрок движется влево -> стена слева, wallContactSide = -1.
+            // Сохраняем сторону стены, к которой цепляемся.
+            // Если персонаж цепляется, его текущее направление определяет сторону стены.
             wallContactSide = facingRight ? 1 : -1;
             StartCoroutine(WallHangCoroutine());
         }
