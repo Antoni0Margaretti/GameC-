@@ -119,12 +119,6 @@ public class PlayerController : MonoBehaviour
                 timeSinceDetached = 0f;
                 jumpCount = 0;
             }
-            else
-            {
-                // Прыжок с пола – обычный вертикальный.
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-                jumpCount++;
-            }
         }
 
         if (grounded)
