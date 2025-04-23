@@ -122,8 +122,17 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                float extraX = rb.linearVelocity.x * jumpImpulseFactor;
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x + extraX, jumpForce);
+                // Если персонаж находится в воздухе и игрок нажимает Jump с направлением, противоположным текущему горизонтальному импульсу,
+                // то производится резкий разворот: горизонтальная скорость устанавливается равной hInput * airMaxSpeed.
+                if (!grounded && Mathf.Abs(hInput) > 0.01f && rb.linearVelocity.x != 0 && (Mathf.Sign(rb.linearVelocity.x) != Mathf.Sign(hInput)))
+                {
+                    rb.linearVelocity = new Vector2(hInput * airMaxSpeed, jumpForce);
+                }
+                else
+                {
+                    float extraX = rb.linearVelocity.x * jumpImpulseFactor;
+                    rb.linearVelocity = new Vector2(rb.linearVelocity.x + extraX, jumpForce);
+                }
                 jumpCount++;
             }
         }
