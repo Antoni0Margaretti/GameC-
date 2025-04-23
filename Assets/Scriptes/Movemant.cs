@@ -13,8 +13,7 @@ public class PlayerController : MonoBehaviour
     // Для управления в воздухе:
     public float airMaxSpeed = 2f;          // Целевая скорость в воздухе при наличии ввода (обычно гораздо ниже).
     public float airAcceleration = 5f;      // Базовое изменение скорости в воздухе (ед/с²).
-                                            // Новый множитель влияния ввода – чем меньше airControlInfluence, тем меньше ввод изменяет скорость.
-    public float airDrag = 0.1f;
+    public float airDrag = 0.1f;            // Коэффициент сопротивления воздуха при отсутствии ввода.
     public float airControlInfluence = 0.2f;
     public float jumpForce = 10f;
     public int maxJumps = 2;
@@ -22,14 +21,13 @@ public class PlayerController : MonoBehaviour
 
     // --- Параметры рывка (Dash)
     public float dashDistance = 5f;         // Расстояние, которое должен пройти рывок.
-    public float dashSpeed = 20f;           // Скорость рывка (задаётся независимо).
+    public float dashSpeed = 20f;           // Скорость рывка.
     public float dashCooldown = 1f;
     private bool canDash = true;
     private bool isInvulnerable = false;
     private bool isDashing = false;         // Блокирует управление во время рывка.
     public float dashAfterLockDuration = 0.2f;
     private bool isDashLocked = false;
-    public float dashImpulseRetention = 0.2f; // Доля импульса, сохраняемая после завершения рывка в воздухе.
 
     // --- Параметры подката (Slide) и приседа (Crouch)
     public float slideSpeed = 8f;
@@ -51,8 +49,11 @@ public class PlayerController : MonoBehaviour
     private bool wallSlideActive = false;     // false – режим «висения», true – режим ускоренного скольжения.
     public float wallDetachCooldown = 0.3f;     // Минимальное время между цеплениями.
     private float timeSinceDetached = 0f;
-    // Сторона стены, к которой цепляемся: 1 – если справа; -1 – если слева.
-    private int wallContactSide = 0;
+    private int wallContactSide = 0;          // 1: если стена справа; -1: если слева.
+
+    // --- Параметры для определения касания стены
+    // Добавляем слой, в котором находятся стены
+    public LayerMask wallLayer;
 
     // --- Блокировка управления после wall jump.
     private bool isWallJumping = false;
@@ -69,7 +70,7 @@ public class PlayerController : MonoBehaviour
     private Vector2 normalSize;
     private Vector2 normalOffset;
 
-    // --- Переменная для хранения горизонтального ввода (обновляется в Update).
+    // --- Переменная для хранения горизонтального ввода.
     private float hInput = 0f;
 
     void Start()
@@ -85,7 +86,6 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // Считываем горизонтальный ввод.
         hInput = Input.GetAxis("Horizontal");
         timeSinceDetached += Time.deltaTime;
         bool grounded = collisionController.IsGrounded;
@@ -131,10 +131,12 @@ public class PlayerController : MonoBehaviour
         }
 
         // --- Цепление за стеной (Wall Hang)
+        // Теперь для активации цепления проверяем, что персонаж полностью касается стены (через IsFullyTouchingWall).
         if (collisionController.IsTouchingWall && !grounded &&
             Mathf.Abs(hInput) > 0.01f &&
             ((facingRight && hInput > 0) || (!facingRight && hInput < 0)) &&
-            timeSinceDetached >= wallDetachCooldown)
+            timeSinceDetached >= wallDetachCooldown &&
+            IsFullyTouchingWall()) // нововведение: проверка полного касания
         {
             StartWallHang();
         }
@@ -160,7 +162,6 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // Подкат (Slide) и присед (Crouch) – работают только на земле.
         if (grounded)
         {
             if (Input.GetKeyDown(KeyCode.LeftControl) && Mathf.Abs(hInput) > 0.01f && !isSliding)
@@ -176,7 +177,6 @@ public class PlayerController : MonoBehaviour
         else
             isCrouching = false;
 
-        // Если персонаж в воздухе и удерживается Ctrl – при приземлении запускается подкат.
         if (grounded && Input.GetKey(KeyCode.LeftControl) && Mathf.Abs(rb.linearVelocity.x) > 0.1f && !isSliding && !isCrouching)
             StartCoroutine(Slide(rb.linearVelocity.x));
 
@@ -189,9 +189,6 @@ public class PlayerController : MonoBehaviour
             collisionController.ignoreFlipForWallChecks = false;
     }
 
-    // Обработка физики в FixedUpdate.
-    // Если ввода отсутствует, горизонтальная скорость остаётся неизменной (сохраняется весь импульс).
-    // Если же ввод есть — изменяем скорость только если он направлен противоположно или если её недостаточно.
     void FixedUpdate()
     {
         bool grounded = collisionController.IsGrounded;
@@ -205,10 +202,10 @@ public class PlayerController : MonoBehaviour
             {
                 if (Mathf.Abs(hInput) > 0.01f)
                 {
-                    // Если текущее направление совпадает с вводом и скорость уже больше целевой, не изменяем ее:
-                    if (Mathf.Sign(rb.linearVelocity.x) == Mathf.Sign(hInput) && Mathf.Abs(rb.linearVelocity.x) > Mathf.Abs(hInput * airMaxSpeed))
+                    if (Mathf.Sign(rb.linearVelocity.x) == Mathf.Sign(hInput) &&
+                        Mathf.Abs(rb.linearVelocity.x) > Mathf.Abs(hInput * airMaxSpeed))
                     {
-                        // Не меняем, просто сохраняем импульс.
+                        // Если уже быстрее, сохраняем импульс.
                     }
                     else
                     {
@@ -219,7 +216,6 @@ public class PlayerController : MonoBehaviour
                 }
                 else
                 {
-                    // Если ввод отсутствует, применяем небольшое замедление горизонтальной скорости.
                     float dragFactor = 1f - airDrag * Time.fixedDeltaTime;
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x * dragFactor, rb.linearVelocity.y);
                 }
@@ -227,11 +223,40 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // --- Методы цепления за стену (Wall Hang / Slide)
+    // --- Метод проверки полного касания стены.
+    // Вычисляем две точки (верхнюю и нижнюю) на передней и задней сторонах коллайдера.
+    // Если хотя бы на одной стороне обе точки совпадают со стеной (через OverlapPoint и заданный слой wallLayer), возвращаем true.
+    private bool IsFullyTouchingWall()
+    {
+        Vector2 pos = (Vector2)transform.position;
+        Vector2 frontTop, frontBottom, backTop, backBottom;
+        // Если персонаж смотрит вправо:
+        if (facingRight)
+        {
+            frontTop = pos + boxCollider.offset + new Vector2(boxCollider.size.x / 2f, boxCollider.size.y / 2f);
+            frontBottom = pos + boxCollider.offset + new Vector2(boxCollider.size.x / 2f, -boxCollider.size.y / 2f);
+            backTop = pos + boxCollider.offset + new Vector2(-boxCollider.size.x / 2f, boxCollider.size.y / 2f);
+            backBottom = pos + boxCollider.offset + new Vector2(-boxCollider.size.x / 2f, -boxCollider.size.y / 2f);
+        }
+        else
+        {
+            frontTop = pos + boxCollider.offset + new Vector2(-boxCollider.size.x / 2f, boxCollider.size.y / 2f);
+            frontBottom = pos + boxCollider.offset + new Vector2(-boxCollider.size.x / 2f, -boxCollider.size.y / 2f);
+            backTop = pos + boxCollider.offset + new Vector2(boxCollider.size.x / 2f, boxCollider.size.y / 2f);
+            backBottom = pos + boxCollider.offset + new Vector2(boxCollider.size.x / 2f, -boxCollider.size.y / 2f);
+        }
+        bool frontFull = Physics2D.OverlapPoint(frontTop, wallLayer) && Physics2D.OverlapPoint(frontBottom, wallLayer);
+        bool backFull = Physics2D.OverlapPoint(backTop, wallLayer) && Physics2D.OverlapPoint(backBottom, wallLayer);
+        return frontFull || backFull;
+    }
+
     private void StartWallHang()
     {
         if (!isSlidingOnWall)
         {
+            // Только если персонаж полностью касается стены, разрешаем цепление.
+            if (!IsFullyTouchingWall())
+                return;
             isSlidingOnWall = true;
             wallSlideActive = false; // Сначала персонаж просто висит.
             rb.linearVelocity = Vector2.zero;
@@ -241,12 +266,14 @@ public class PlayerController : MonoBehaviour
             StartCoroutine(WallHangCoroutine());
         }
     }
+
     private IEnumerator WallHangCoroutine()
     {
         yield return new WaitForSeconds(wallHangTime);
         if (isSlidingOnWall)
             wallSlideActive = true;
     }
+
     private void StopWallSlide()
     {
         isSlidingOnWall = false;
@@ -255,45 +282,33 @@ public class PlayerController : MonoBehaviour
         rb.gravityScale = originalGravityScale;
     }
 
-    // --- Рывок (Dash) – одинаковое поведение на земле и в воздухе.
-
     private IEnumerator Dash()
     {
         isDashing = true;
         canDash = false;
-
-        // Сбрасываем вертикальную составляющую, чтобы рывок был чисто горизонтальным.
+        // Сброс вертикальной составляющей для чистого горизонтального рывка.
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
-
         float dashDirection = (facingRight ? 1f : -1f);
-        float duration = dashDistance / dashSpeed;  // Длительность dash = расстояние / скорость.
+        float duration = dashDistance / dashSpeed;
         float originalGravity = rb.gravityScale;
-
-        // Отключаем гравитацию на время dash.
         rb.gravityScale = 0;
-
-        // Устанавливаем фиксированную горизонтальную скорость dash.
         rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0);
-
         yield return new WaitForSeconds(duration);
-
-        // Восстанавливаем гравитацию.
         rb.gravityScale = originalGravity;
         yield return new WaitForSeconds(0.1f);
-
-        // Если персонаж находится в воздухе, уменьшаем горизонтальную скорость до некоторой доли рывкового импульса.
-        if (!collisionController.IsGrounded)
-        {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x * dashImpulseRetention, rb.linearVelocity.y);
-        }
-
         isDashing = false;
         canDash = true;
         isInvulnerable = false;
+        StartCoroutine(DashAfterLockCoroutine());
     }
 
+    private IEnumerator DashAfterLockCoroutine()
+    {
+        isDashLocked = true;
+        yield return new WaitForSeconds(dashAfterLockDuration);
+        isDashLocked = false;
+    }
 
-    // --- Подкат (Slide) – выполняется, пока удерживается клавиша Ctrl (или S).
     private IEnumerator Slide(float moveInput)
     {
         isSliding = true;
@@ -321,7 +336,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // --- Изменение направления (Flip)
     private void Flip()
     {
         facingRight = !facingRight;
@@ -330,7 +344,6 @@ public class PlayerController : MonoBehaviour
         transform.localScale = s;
     }
 
-    // --- Блокировка управления после wall jump.
     private IEnumerator WallJumpLockCoroutine()
     {
         isWallJumping = true;
