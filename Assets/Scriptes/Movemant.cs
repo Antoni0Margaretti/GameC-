@@ -262,35 +262,28 @@ public class PlayerController : MonoBehaviour
         isDashing = true;
         canDash = false;
 
-        // Сбрасываем вертикальную составляющую, чтобы рывок был чисто горизонтальным.
+        // Сброс вертикальной скорости для чисто горизонтального рывка.
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
 
         float dashDirection = (facingRight ? 1f : -1f);
-        float duration = dashDistance / dashSpeed;  // Длительность dash = расстояние / скорость.
-        float originalGravity = rb.gravityScale;
+        float duration = dashDistance / dashSpeed;
 
-        // Отключаем гравитацию на время dash.
+        // Не берём rb.gravityScale, а используем оригинальное значение, сохранённое при старте.
         rb.gravityScale = 0;
-
-        // Устанавливаем фиксированную горизонтальную скорость dash.
+        // Устанавливаем фиксированную горизонтальную скорость dash и обнуляем вертикальную.
         rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0);
 
         yield return new WaitForSeconds(duration);
 
-        // Восстанавливаем гравитацию.
-        rb.gravityScale = originalGravity;
+        // ВОССТАНАВЛИВАЕМ нормальную гравитацию, независимо от того, от стены ли мы рывкали или с земли.
+        rb.gravityScale = originalGravityScale;
         yield return new WaitForSeconds(0.1f);
-
-        // Если персонаж находится в воздухе, уменьшаем горизонтальную скорость до некоторой доли рывкового импульса.
-        if (!collisionController.IsGrounded)
-        {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x * dashImpulseRetention, rb.linearVelocity.y);
-        }
 
         isDashing = false;
         canDash = true;
         isInvulnerable = false;
     }
+
 
 
     // --- Подкат (Slide) – выполняется, пока удерживается клавиша Ctrl (или S).
