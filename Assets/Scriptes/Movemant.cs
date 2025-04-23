@@ -54,6 +54,9 @@ public class PlayerController : MonoBehaviour
     // Сторона стены, к которой цепляемся: 1 – если справа; -1 – если слева.
     private int wallContactSide = 0;
 
+    // --- Глобальная переменная стандартной гравитации.
+    public float defaultGravityScale;     // Задаётся через Inspector или инициализируется в Start.
+
     // --- Блокировка управления после wall jump.
     private bool isWallJumping = false;
     public float wallJumpLockDuration = 0.2f;
@@ -262,22 +265,30 @@ public class PlayerController : MonoBehaviour
         isDashing = true;
         canDash = false;
 
-        // Сброс вертикальной скорости для чисто горизонтального рывка.
+        // Сбрасываем вертикальную составляющую, чтобы рывок был чисто горизонтальным.
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
 
         float dashDirection = (facingRight ? 1f : -1f);
-        float duration = dashDistance / dashSpeed;
+        float duration = dashDistance / dashSpeed;  // Длительность dash = расстояние / скорость.
+        float originalGravity = defaultGravityScale;
 
-        // Не берём rb.gravityScale, а используем оригинальное значение, сохранённое при старте.
+        // Отключаем гравитацию на время dash.
         rb.gravityScale = 0;
-        // Устанавливаем фиксированную горизонтальную скорость dash и обнуляем вертикальную.
+
+        // Устанавливаем фиксированную горизонтальную скорость dash.
         rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0);
 
         yield return new WaitForSeconds(duration);
 
-        // ВОССТАНАВЛИВАЕМ нормальную гравитацию, независимо от того, от стены ли мы рывкали или с земли.
-        rb.gravityScale = originalGravityScale;
+        // Восстанавливаем гравитацию.
+        rb.gravityScale = originalGravity;
         yield return new WaitForSeconds(0.1f);
+
+        // Если персонаж находится в воздухе, уменьшаем горизонтальную скорость до некоторой доли рывкового импульса.
+        if (!collisionController.IsGrounded)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x * dashImpulseRetention, rb.linearVelocity.y);
+        }
 
         isDashing = false;
         canDash = true;
