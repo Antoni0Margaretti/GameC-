@@ -19,6 +19,11 @@ public class CollisionController : MonoBehaviour
     public Vector2 customWallCheckOffset;
     public Vector2 customWallCheckSize;
 
+    [Header("Model Center Adjustment")]
+    // ¬ам нужно задать смещение от точки pivot до визуального центра модели.
+    // ѕри повороте эту величину можно зеркально отразить.
+    public Vector2 modelCenterOffset;
+
     // —войства дл€ доступа из других скриптов.
     public bool IsGrounded { get; private set; }
     public bool IsTouchingWall { get; private set; }
@@ -40,16 +45,19 @@ public class CollisionController : MonoBehaviour
         // ѕолучаем мировую позицию проверки земли.
         Vector2 groundCheckPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         IsGrounded = Physics2D.OverlapBox(groundCheckPos, groundCheckSize, 0f, groundLayer);
-        // ѕроверка стены с использованием двух линий.
+        // ѕроверку стены выполн€ем через метод, использующий две линии.
         IsTouchingWall = CheckFullWallContact();
     }
 
-    // ћетод возвращает true, если хот€ бы одна из линий (спереди или сзади) полностью прилегает к стене.
-    // Ђѕолное прилеганиеї определ€етс€ как наличие столкновени€ с обоими контрольными точками (верхней и нижней) линии.
+    // ¬озвращает true, если хот€ бы одна из линий (спереди или сзади) полностью прилегает к стене.
     private bool CheckFullWallContact()
     {
-        Vector2 pos = (Vector2)transform.position;
-        // ¬ыбираем offset и size дл€ проверки: либо из компонента, либо из настроек override.
+        // ќпредел€ем позицию, скорректированную на смещение центра модели.
+        Vector2 pos = (Vector2)transform.position +
+                      new Vector2(ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
+                                  modelCenterOffset.y);
+
+        // ¬ыбираем offset и размер дл€ проверки: либо из компонента, либо из настроек override.
         Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : boxCollider.offset;
         Vector2 size = overrideWallCheckCollider ? customWallCheckSize : boxCollider.size;
         Vector2 halfSize = size * 0.5f;
@@ -73,23 +81,26 @@ public class CollisionController : MonoBehaviour
             backTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
             backBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
         }
-        // ѕровер€ем, что обе контрольные точки линии (верхн€€ и нижн€€) обнаруживают столкновение с объектом из сло€ wallLayer.
+        // ѕроверка: если обе контрольные точки линии (верхн€€ и нижн€€) касаютс€ стены, считаем, что лини€ полностью прилегает.
         bool frontFull = Physics2D.OverlapPoint(frontTop, wallLayer) && Physics2D.OverlapPoint(frontBottom, wallLayer);
         bool backFull = Physics2D.OverlapPoint(backTop, wallLayer) && Physics2D.OverlapPoint(backBottom, wallLayer);
         return frontFull || backFull;
     }
 
-    // ƒл€ визуальной отладки отрисовываем зону проверки земли и линии дл€ проверки стены.
     void OnDrawGizmosSelected()
     {
+        // ќтрисовка зоны проверки земли.
         Gizmos.color = Color.green;
         Vector2 groundCheckPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         Gizmos.DrawWireCube(groundCheckPos, groundCheckSize);
 
+        // ≈сли имеетс€ BoxCollider2D, отрисовываем линии дл€ проверки стены.
         BoxCollider2D bc = GetComponent<BoxCollider2D>();
         if (bc != null)
         {
-            Vector2 pos = (Vector2)transform.position;
+            Vector2 pos = (Vector2)transform.position +
+                          new Vector2(ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
+                                      modelCenterOffset.y);
             Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : bc.offset;
             Vector2 size = overrideWallCheckCollider ? customWallCheckSize : bc.size;
             Vector2 halfSize = size * 0.5f;
