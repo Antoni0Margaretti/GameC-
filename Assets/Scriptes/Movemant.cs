@@ -13,9 +13,10 @@ public class PlayerController : MonoBehaviour
     // Для управления в воздухе:
     public float airMaxSpeed = 2f;          // Целевая скорость в воздухе при наличии ввода (обычно гораздо ниже).
     public float airAcceleration = 5f;      // Базовое изменение скорости в воздухе (ед/с²).
-                                            // Новый множитель влияния ввода – чем меньше airControlInfluence, тем меньше ввод изменяет скорость.
-    public float airDrag = 0.1f;
+    // Новый множитель влияния ввода – чем меньше airControlInfluence, тем меньше ввод изменяет скорость.
     public float airControlInfluence = 0.2f;
+    // AirDrag – коэффициент, имитирующий сопротивление воздуха при отсутствии ввода.
+    public float airDrag = 0.1f;
     public float jumpForce = 10f;
     public int maxJumps = 2;
     private int jumpCount;
@@ -188,9 +189,11 @@ public class PlayerController : MonoBehaviour
             collisionController.ignoreFlipForWallChecks = false;
     }
 
-    // Обработка физики в FixedUpdate.
+    // --- Обработка физики в FixedUpdate.
     // Если ввода отсутствует, горизонтальная скорость остаётся неизменной (сохраняется весь импульс).
-    // Если же ввод есть — изменяем скорость только если он направлен противоположно или если её недостаточно.
+    // Если же ввод есть, скорость изменяется по формуле:
+    // newX = Mathf.MoveTowards(currentX, hInput × airMaxSpeed, airAcceleration × Time.fixedDeltaTime × airControlInfluence)
+    // Если ввода нет, к скорости применяется небольшое замедление (сопротивление воздуха).
     void FixedUpdate()
     {
         bool grounded = collisionController.IsGrounded;
@@ -204,21 +207,12 @@ public class PlayerController : MonoBehaviour
             {
                 if (Mathf.Abs(hInput) > 0.01f)
                 {
-                    // Если текущее направление совпадает с вводом и скорость уже больше целевой, не изменяем ее:
-                    if (Mathf.Sign(rb.linearVelocity.x) == Mathf.Sign(hInput) && Mathf.Abs(rb.linearVelocity.x) > Mathf.Abs(hInput * airMaxSpeed))
-                    {
-                        // Не меняем, просто сохраняем импульс.
-                    }
-                    else
-                    {
-                        float targetX = hInput * airMaxSpeed;
-                        float newX = Mathf.MoveTowards(rb.linearVelocity.x, targetX, airAcceleration * Time.fixedDeltaTime * airControlInfluence);
-                        rb.linearVelocity = new Vector2(newX, rb.linearVelocity.y);
-                    }
+                    float targetX = hInput * airMaxSpeed;
+                    float newX = Mathf.MoveTowards(rb.linearVelocity.x, targetX, airAcceleration * Time.fixedDeltaTime * airControlInfluence);
+                    rb.linearVelocity = new Vector2(newX, rb.linearVelocity.y);
                 }
                 else
                 {
-                    // Если ввод отсутствует, применяем небольшое замедление горизонтальной скорости.
                     float dragFactor = 1f - airDrag * Time.fixedDeltaTime;
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x * dragFactor, rb.linearVelocity.y);
                 }
@@ -292,6 +286,7 @@ public class PlayerController : MonoBehaviour
         {
             if (!collisionController.IsGrounded)
                 break;
+            // Если клавиши отпущены – немедленно прекращаем подкат.
             if (!Input.GetKey(KeyCode.LeftControl) && !Input.GetKey(KeyCode.S))
                 break;
             float currentX = Mathf.Lerp(initialVel, 0, elapsed / slideDuration);
