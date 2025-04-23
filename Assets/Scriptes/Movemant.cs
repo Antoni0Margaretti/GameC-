@@ -259,19 +259,21 @@ public class PlayerController : MonoBehaviour
     {
         isDashing = true;
         canDash = false;
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); // Сбрасываем вертикальную составляющую.
-        float dashDirection = (facingRight ? 1 : -1);
+        // Сброс вертикальной скорости для чистого горизонтального рывка.
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
+        float dashDirection = (facingRight ? 1f : -1f);
         float duration = dashDistance / dashSpeed;
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0;
+        // Устанавливаем фиксированную горизонтальную скорость.
         rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0);
         yield return new WaitForSeconds(duration);
         rb.gravityScale = originalGravity;
         yield return new WaitForSeconds(0.1f);
         isDashing = false;
-        canDash = true;
         isInvulnerable = false;
         StartCoroutine(DashAfterLockCoroutine());
+        canDash = true;
     }
     private IEnumerator DashAfterLockCoroutine()
     {
