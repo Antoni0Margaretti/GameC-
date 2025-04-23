@@ -29,6 +29,7 @@ public class PlayerController : MonoBehaviour
     private bool isDashing = false;         // Блокирует управление во время рывка.
     public float dashAfterLockDuration = 0.2f;
     private bool isDashLocked = false;
+    public float dashImpulseRetention = 0.2f; // Доля импульса, сохраняемая после завершения рывка в воздухе.
 
     // --- Параметры подката (Slide) и приседа (Crouch)
     public float slideSpeed = 8f;
@@ -255,22 +256,23 @@ public class PlayerController : MonoBehaviour
     }
 
     // --- Рывок (Dash) – одинаковое поведение на земле и в воздухе.
+
     private IEnumerator Dash()
     {
         isDashing = true;
         canDash = false;
-        // Сбрасываем вертикальную скорость (вне зависимости от состояния)
+
+        // Сбрасываем вертикальную составляющую, чтобы рывок был чисто горизонтальным.
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
 
-        // Устанавливаем направление рывка по горизонтали.
         float dashDirection = (facingRight ? 1f : -1f);
-        // Расчет длительности рывка так, чтобы горизонтальное расстояние было равным dashDistance.
-        float duration = dashDistance / dashSpeed;
+        float duration = dashDistance / dashSpeed;  // Длительность dash = расстояние / скорость.
         float originalGravity = rb.gravityScale;
 
-        // Отключаем гравитацию на время рывка.
+        // Отключаем гравитацию на время dash.
         rb.gravityScale = 0;
-        // Запускаем рывок: задаём фиксированную горизонтальную скорость и обнуляем вертикальную.
+
+        // Устанавливаем фиксированную горизонтальную скорость dash.
         rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0);
 
         yield return new WaitForSeconds(duration);
@@ -278,6 +280,12 @@ public class PlayerController : MonoBehaviour
         // Восстанавливаем гравитацию.
         rb.gravityScale = originalGravity;
         yield return new WaitForSeconds(0.1f);
+
+        // Если персонаж находится в воздухе, уменьшаем горизонтальную скорость до некоторой доли рывкового импульса.
+        if (!collisionController.IsGrounded)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x * dashImpulseRetention, rb.linearVelocity.y);
+        }
 
         isDashing = false;
         canDash = true;
