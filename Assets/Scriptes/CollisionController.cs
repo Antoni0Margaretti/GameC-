@@ -29,8 +29,6 @@ public class CollisionController : MonoBehaviour
     // Буфер времени, в течение которого контакт со стеной считается действующим, даже если текущая проверка не сработала.
     public float wallContactGracePeriod = 0.15f;
     private float lastWallContactTime = -100f;
-    // Храним сторону последнего обнаруженного контакта: 1 – контакт с правой стороны, -1 – с левой.
-    private int lastWallContactSide = 0;
 
     [Header("Dynamic Hitbox Settings")]
     // Размеры и смещения хитбокса для различных состояний.
@@ -99,11 +97,8 @@ public class CollisionController : MonoBehaviour
         bool fullContact = CheckFullWallContact();
         if (fullContact)
             lastWallContactTime = Time.time;
-        // Получаем ожидаемую сторону для контакта в зависимости от текущего направления.
-        int expectedSide = ignoreFlipForWallChecks ? 1 : (transform.localScale.x >= 0 ? 1 : -1);
-
-        // Состояние стены активно, если временной буфер ещё не истёк и обнаруженная сторона совпадает с ожидаемой.
-        IsTouchingWall = ((Time.time - lastWallContactTime) <= wallContactGracePeriod) && (lastWallContactSide == expectedSide);
+        // Даже если в текущем кадре контакт не найден, если с момента последнего контакта прошло менее wallContactGracePeriod, считаем, что персонаж всё еще касается стены.
+        IsTouchingWall = (Time.time - lastWallContactTime) <= wallContactGracePeriod;
     }
 
     /// <summary>
@@ -142,15 +137,6 @@ public class CollisionController : MonoBehaviour
         bool frontFull = Physics2D.OverlapPoint(frontTop, wallLayer) && Physics2D.OverlapPoint(frontBottom, wallLayer);
         bool backFull = Physics2D.OverlapPoint(backTop, wallLayer) && Physics2D.OverlapPoint(backBottom, wallLayer);
         return frontFull || backFull;
-    }
-
-    /// <summary>
-    /// Метод сброса состояния буфера контакта (может быть вызван извне, например, при смене направления).
-    /// </summary>
-    public void ResetWallContactBuffer()
-    {
-        lastWallContactTime = -100f;
-        lastWallContactSide = 0;
     }
 
     /// <summary>
