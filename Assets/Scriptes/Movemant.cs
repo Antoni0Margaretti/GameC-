@@ -75,6 +75,7 @@ public class PlayerController : MonoBehaviour
     // --- Переменная для хранения горизонтального ввода (обновляется в Update).
     private float hInput = 0f;
 
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
