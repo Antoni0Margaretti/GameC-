@@ -707,9 +707,11 @@ MonoBehaviour:
   wallLayer:
     serializedVersion: 2
     m_Bits: 128
-  wallCheckOffset: {x: -0.3, y: 0}
-  wallCheckSize: {x: 0.99, y: 2}
   ignoreFlipForWallChecks: 0
+  overrideWallCheckCollider: 1
+  customWallCheckOffset: {x: 0, y: 0}
+  customWallCheckSize: {x: 1.1, y: 2}
+  modelCenterOffset: {x: -0.065, y: 0}
 --- !u!114 &756424252
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -725,11 +727,15 @@ MonoBehaviour:
   speed: 10
   airMaxSpeed: 10
   airAcceleration: 25
-  jumpForce: 13
+  airDrag: 1
+  airControlInfluence: 1
+  jumpForce: 12
   maxJumps: 1
   dashDistance: 2
   dashSpeed: 40
   dashCooldown: 1
+  dashAfterLockDuration: 0.2
+  dashImpulseRetention: 0.2
   slideSpeed: 15
   slideDuration: 1
   slideBoost: 1.5
@@ -737,9 +743,10 @@ MonoBehaviour:
   wallHangTime: 0.5
   wallSlideAcceleration: 10
   wallSlideMaxSpeed: 30
-  wallJumpForce: 13
-  wallJumpHorizForce: 13
+  wallJumpForce: 12
+  wallJumpHorizForce: 12
   wallDetachCooldown: 0.5
+  defaultGravityScale: 2.4
   wallJumpLockDuration: 0.2
   wallHangGravityScale: 0
 --- !u!50 &756424253
