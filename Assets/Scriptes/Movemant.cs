@@ -95,6 +95,14 @@ public class PlayerController : MonoBehaviour
         bool grounded = collisionController.IsGrounded;
         bool touchingWall = collisionController.IsTouchingWall;
 
+        // Обновление состояния динамического хитбокса через CollisionController.
+        if (isSliding)
+            collisionController.currentHitboxState = CollisionController.HitboxState.Sliding;
+        else if (isCrouching)
+            collisionController.currentHitboxState = CollisionController.HitboxState.Crouching;
+        else
+            collisionController.currentHitboxState = CollisionController.HitboxState.Normal;
+
         // Поворот персонажа согласно направлению ввода.
         if (hInput > 0 && !facingRight)
             Flip();
