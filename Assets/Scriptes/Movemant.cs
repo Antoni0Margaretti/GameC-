@@ -259,24 +259,31 @@ public class PlayerController : MonoBehaviour
     {
         isDashing = true;
         canDash = false;
-        float currentVertical = rb.velocity.y;
-        if (collisionController.IsGrounded)
-        {
-            rb.velocity = new Vector2(rb.velocity.x, 0);
-            currentVertical = 0;
-        }
-        float dashDirection = (facingRight ? 1 : -1);
+        // Сбрасываем вертикальную скорость (вне зависимости от состояния)
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
+
+        // Устанавливаем направление рывка по горизонтали.
+        float dashDirection = (facingRight ? 1f : -1f);
+        // Расчет длительности рывка так, чтобы горизонтальное расстояние было равным dashDistance.
         float duration = dashDistance / dashSpeed;
         float originalGravity = rb.gravityScale;
+
+        // Отключаем гравитацию на время рывка.
         rb.gravityScale = 0;
-        rb.velocity = new Vector2(dashDirection * dashSpeed, currentVertical);
+        // Запускаем рывок: задаём фиксированную горизонтальную скорость и обнуляем вертикальную.
+        rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0);
+
         yield return new WaitForSeconds(duration);
+
+        // Восстанавливаем гравитацию.
         rb.gravityScale = originalGravity;
         yield return new WaitForSeconds(0.1f);
+
         isDashing = false;
         canDash = true;
         isInvulnerable = false;
     }
+
 
     // --- Подкат (Slide) – выполняется, пока удерживается клавиша Ctrl (или S).
     private IEnumerator Slide(float moveInput)
