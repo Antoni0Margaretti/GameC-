@@ -10,11 +10,14 @@ public class PlayerController : MonoBehaviour
 
     // --- Параметры движения
     public float speed = 10f;             // Максимальная скорость на земле.
-    // Для управления в воздухе:
-    public float airMaxSpeed = 2f;          // Целевая скорость в воздухе при наличии ввода (обычно гораздо ниже).
-    public float airAcceleration = 5f;      // Базовое изменение скорости в воздухе (ед/с²).
-    // Новый множитель влияния ввода – чем меньше airControlInfluence, тем меньше ввод изменяет скорость.
+    public float airMaxSpeed = 2f;          // Целевая скорость в воздухе при наличии ввода (обычно ниже).
+    public float airAcceleration = 5f;      // Базовое изменение горизонтальной скорости в воздухе (ед/с²).
+    // airControlInfluence регулирует, насколько быстро ввод изменяет скорость в воздухе.
+    // Малое значение означает, что сохранится большая часть накопленного импульса.
     public float airControlInfluence = 0.2f;
+    // Новый параметр для сопротивления воздуха – если ввод отсутствует, горизонтальная скорость уменьшается.
+    // Значение, например, 0.1 означает, что каждый FixedUpdate горизонтальная скорость умножается на (1 - 0.1×Time.fixedDeltaTime).
+    public float airDrag = 0.1f;
     public float jumpForce = 10f;
     public int maxJumps = 2;
     private int jumpCount;
@@ -46,7 +49,7 @@ public class PlayerController : MonoBehaviour
     public float wallJumpForce = 10f;         // Вертикальная компонента wall jump.
     public float wallJumpHorizForce = 5f;     // Горизонтальная составляющая wall jump (фиксированная).
     private bool isSlidingOnWall = false;
-    private bool wallSlideActive = false;     // false – режим «висения», true – режим ускоренного скольжения.
+    private bool wallSlideActive = false;     // false – режим «висения», true – ускоренное скольжение.
     public float wallDetachCooldown = 0.3f;     // Минимальное время между цеплениями.
     private float timeSinceDetached = 0f;
     // Сторона стены, к которой цепляемся: 1 – если справа; -1 – если слева.
@@ -63,7 +66,7 @@ public class PlayerController : MonoBehaviour
     // --- Флаг направления (куда смотрит персонаж).
     private bool facingRight = true;
 
-    // --- Переменные хитбокса (для восстановления после приседа/подката).
+    // --- Переменные хитбокса (для восстановления после подката/приседа).
     private Vector2 normalSize;
     private Vector2 normalOffset;
 
@@ -89,7 +92,7 @@ public class PlayerController : MonoBehaviour
         bool grounded = collisionController.IsGrounded;
         bool touchingWall = collisionController.IsTouchingWall;
 
-        // Поворот персонажа согласно направлению ввода.
+        // Поворот персонажа в зависимости от направления ввода.
         if (hInput > 0 && !facingRight)
             Flip();
         else if (hInput < 0 && facingRight)
@@ -122,6 +125,7 @@ public class PlayerController : MonoBehaviour
                 jumpCount++;
             }
         }
+
         if (grounded)
         {
             jumpCount = 0;
@@ -153,9 +157,7 @@ public class PlayerController : MonoBehaviour
                     StartCoroutine(Dash());
             }
             else
-            {
                 StartCoroutine(Dash());
-            }
         }
 
         // Подкат (Slide) и присед (Crouch) – работают только на земле.
@@ -188,8 +190,9 @@ public class PlayerController : MonoBehaviour
     }
 
     // Обработка физики в FixedUpdate.
-    // Если ввода отсутствует, горизонтальная скорость остаётся неизменной (сохраняется весь импульс).
-    // Если же ввод есть — изменяем скорость только если он направлен противоположно или если её недостаточно.
+    // Если в воздухе ввод отсутствует – горизонтальная скорость уменьшается (сопротивление воздуха),
+    // иначе скорость изменяется по формуле:
+    // newX = Mathf.MoveTowards(currentX, hInput × airMaxSpeed, airAcceleration × Time.fixedDeltaTime × airControlInfluence)
     void FixedUpdate()
     {
         bool grounded = collisionController.IsGrounded;
@@ -203,19 +206,16 @@ public class PlayerController : MonoBehaviour
             {
                 if (Mathf.Abs(hInput) > 0.01f)
                 {
-                    // Если текущее направление совпадает с вводом и скорость уже больше целевой, не изменяем ее:
-                    if (Mathf.Sign(rb.velocity.x) == Mathf.Sign(hInput) && Mathf.Abs(rb.velocity.x) > Mathf.Abs(hInput * airMaxSpeed))
-                    {
-                        // Не меняем, просто сохраняем импульс.
-                    }
-                    else
-                    {
-                        float targetX = hInput * airMaxSpeed;
-                        float newX = Mathf.MoveTowards(rb.velocity.x, targetX, airAcceleration * Time.fixedDeltaTime * airControlInfluence);
-                        rb.velocity = new Vector2(newX, rb.velocity.y);
-                    }
+                    float targetX = hInput * airMaxSpeed;
+                    float newX = Mathf.MoveTowards(rb.velocity.x, targetX, airAcceleration * Time.fixedDeltaTime * airControlInfluence);
+                    rb.velocity = new Vector2(newX, rb.velocity.y);
                 }
-                // Если ввода нет, не модифицируем значение – сохраняем полный накопленный импульс.
+                else
+                {
+                    // Если ввод отсутствует, применяем небольшое замедление горизонтальной скорости.
+                    float dragFactor = 1f - airDrag * Time.fixedDeltaTime;
+                    rb.velocity = new Vector2(rb.velocity.x * dragFactor, rb.velocity.y);
+                }
             }
         }
     }
@@ -286,6 +286,7 @@ public class PlayerController : MonoBehaviour
         {
             if (!collisionController.IsGrounded)
                 break;
+            // Если клавиши отпущены – немедленно прекращаем подкат.
             if (!Input.GetKey(KeyCode.LeftControl) && !Input.GetKey(KeyCode.S))
                 break;
             float currentX = Mathf.Lerp(initialVel, 0, elapsed / slideDuration);
