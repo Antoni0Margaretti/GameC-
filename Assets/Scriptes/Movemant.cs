@@ -350,7 +350,11 @@ public class PlayerController : MonoBehaviour
         Vector3 s = transform.localScale;
         s.x *= -1;
         transform.localScale = s;
+
+        // Сброс буфера касания стены, чтобы устаревшее состояние не мешало
+        collisionController.ResetWallContactBuffer();
     }
+
 
     // --- Блокировка управления после wall jump.
     private IEnumerator WallJumpLockCoroutine()

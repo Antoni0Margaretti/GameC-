@@ -176,4 +176,11 @@ public class CollisionController : MonoBehaviour
         Gizmos.DrawLine(frontTop, frontBottom);
         Gizmos.DrawLine(backTop, backBottom);
     }
+
+    public void ResetWallContactBuffer()
+    {
+        // Устанавливаем время последнего контакта в очень старое значение,
+        // чтобы на следующий кадр IsTouchingWall не считалось активным.
+        lastWallContactTime = -100f;
+    }
 }
