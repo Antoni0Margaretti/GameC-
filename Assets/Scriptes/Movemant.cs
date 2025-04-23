@@ -230,7 +230,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // --- Методы цепления за стену (Wall Hang / Slide)
+    // --- Методы цепления за стену (Wall Hang / Slide
     private void StartWallHang()
     {
         if (!isSlidingOnWall)
