@@ -20,9 +20,16 @@ public class CollisionController : MonoBehaviour
     public Vector2 customWallCheckSize;
 
     [Header("Model Center Adjustment")]
-    // ¬ам нужно задать смещение от точки pivot до визуального центра модели.
-    // ѕри повороте эту величину можно зеркально отразить.
+    // —мещение от точки pivot до визуального центра модели.
+    // ѕри повороте эта величина зеркально отражаетс€.
     public Vector2 modelCenterOffset;
+
+    [Header("Wall Contact Buffer Settings")]
+    // Ѕуфер времени (в секундах), в течение которого контакт со стеной считаетс€ действующим,
+    // даже если текуща€ проверка не обнаружила столкновение.
+    public float wallContactGracePeriod = 0.15f;
+    // ¬рем€ последнего обнаруженного контакта со стеной.
+    private float lastWallContactTime = -100f;
 
     // —войства дл€ доступа из других скриптов.
     public bool IsGrounded { get; private set; }
@@ -45,19 +52,28 @@ public class CollisionController : MonoBehaviour
         // ѕолучаем мировую позицию проверки земли.
         Vector2 groundCheckPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         IsGrounded = Physics2D.OverlapBox(groundCheckPos, groundCheckSize, 0f, groundLayer);
-        // ѕроверку стены выполн€ем через метод, использующий две линии.
-        IsTouchingWall = CheckFullWallContact();
+
+        // ѕолучаем результат жЄсткой проверки стены.
+        bool fullContact = CheckFullWallContact();
+        // ≈сли обнаружен контакт Ц обновл€ем врем€ контакта.
+        if (fullContact)
+        {
+            lastWallContactTime = Time.time;
+        }
+        // ≈сли с момента последнего обнаруженного контакта прошло не более wallContactGracePeriod, считаем,
+        // что персонаж всЄ еще прицеплен к стене.
+        IsTouchingWall = (Time.time - lastWallContactTime) <= wallContactGracePeriod;
     }
 
     // ¬озвращает true, если хот€ бы одна из линий (спереди или сзади) полностью прилегает к стене.
     private bool CheckFullWallContact()
     {
-        // ќпредел€ем позицию, скорректированную на смещение центра модели.
+        // ¬ычисл€ем позицию с учЄтом смещени€ центра модели.
         Vector2 pos = (Vector2)transform.position +
                       new Vector2(ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
                                   modelCenterOffset.y);
 
-        // ¬ыбираем offset и размер дл€ проверки: либо из компонента, либо из настроек override.
+        // ¬ыбираем offset и размер дл€ проверки: либо из BoxCollider2D, либо из настроек override.
         Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : boxCollider.offset;
         Vector2 size = overrideWallCheckCollider ? customWallCheckSize : boxCollider.size;
         Vector2 halfSize = size * 0.5f;
@@ -81,7 +97,7 @@ public class CollisionController : MonoBehaviour
             backTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
             backBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
         }
-        // ѕроверка: если обе контрольные точки линии (верхн€€ и нижн€€) касаютс€ стены, считаем, что лини€ полностью прилегает.
+        // ≈сли обе контрольные точки одной из линий касаютс€ объекта из сло€ wallLayer, считаем, что лини€ полностью прилегает.
         bool frontFull = Physics2D.OverlapPoint(frontTop, wallLayer) && Physics2D.OverlapPoint(frontBottom, wallLayer);
         bool backFull = Physics2D.OverlapPoint(backTop, wallLayer) && Physics2D.OverlapPoint(backBottom, wallLayer);
         return frontFull || backFull;
@@ -94,7 +110,7 @@ public class CollisionController : MonoBehaviour
         Vector2 groundCheckPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         Gizmos.DrawWireCube(groundCheckPos, groundCheckSize);
 
-        // ≈сли имеетс€ BoxCollider2D, отрисовываем линии дл€ проверки стены.
+        // ≈сли присутствует BoxCollider2D Ц отрисовываем линии дл€ проверки стены.
         BoxCollider2D bc = GetComponent<BoxCollider2D>();
         if (bc != null)
         {
