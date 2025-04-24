@@ -12,8 +12,8 @@ public class PlayerController : MonoBehaviour
     public float speed = 10f;             // Максимальная скорость на земле.
     // Для управления в воздухе:
     public float airMaxSpeed = 2f;          // Целевая скорость в воздухе при наличии ввода (обычно гораздо ниже).
-    public float airAcceleration = 5f;      // Базовое изменение скорости в воздухе (ед/с²).
-                                            // Новый множитель влияния ввода – чем меньше airControlInfluence, тем меньше ввод изменяет скорость.
+    public float airAcceleration = 5f;
+
     public float airDrag = 0.1f;
     public float airControlInfluence = 0.2f;
     public float jumpForce = 10f;
@@ -84,7 +84,6 @@ public class PlayerController : MonoBehaviour
 
     // --- Переменная для хранения горизонтального ввода (обновляется в Update).
     private float hInput = 0f;
-
 
     void Start()
     {
@@ -267,8 +266,6 @@ public class PlayerController : MonoBehaviour
             collisionController.ignoreFlipForWallChecks = false;
     }
 
-
-
     // Обработка физики в FixedUpdate.
     // Если ввода отсутствует, горизонтальная скорость остаётся неизменной (сохраняется весь импульс).
     // Если же ввод есть — изменяем скорость только если он направлен противоположно или если её недостаточно.
@@ -307,7 +304,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // --- Методы цепления за стену (Wall Hang / Slide
+    // --- Методы цепления за стену (Wall Hang / Slide)
     private void StartWallHang()
     {
         if (!isSlidingOnWall)
@@ -343,7 +340,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
+    // Короутина автоматического подъёма (Auto Climb)
     private IEnumerator AutoClimbCoroutine()
     {
         // Цикл выполняется, пока авто-подъём активен и пока не достигнута заданная дистанция подъёма.
@@ -371,7 +368,6 @@ public class PlayerController : MonoBehaviour
         // После завершения авто-подъёма запускаем переход в режим висения (если ещё не вызван)
         StartCoroutine(WallHangCoroutine());
     }
-
 
     // Короутина, которая ждёт завершения авто-подъёма, а затем запускает стандартный таймер висения:
     private IEnumerator WaitForAutoClimbThenWallHang()
@@ -425,9 +421,7 @@ public class PlayerController : MonoBehaviour
         rb.gravityScale = defaultGravityScale;
     }
 
-
     // --- Рывок (Dash) – одинаковое поведение на земле и в воздухе.
-
     private IEnumerator Dash()
     {
         isDashing = true;
@@ -462,8 +456,6 @@ public class PlayerController : MonoBehaviour
         canDash = true;
         isInvulnerable = false;
     }
-
-
 
     // --- Подкат (Slide) – выполняется, пока удерживается клавиша Ctrl (или S).
     private IEnumerator Slide(float moveInput)
