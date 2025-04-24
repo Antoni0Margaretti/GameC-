@@ -135,14 +135,15 @@ public class PlayerController : MonoBehaviour
         {
             if (isSlidingOnWall)
             {
-                // Если персонаж находится в режиме авто-подъёма, сразу его отключаем и сбрасываем вертикальную скорость.
+                // Если во время автоматического подъёма (autoClimbing) игрок нажимает Space,
+                // сразу отключаем авто-подъём и обнуляем вертикальную скорость.
                 if (autoClimbing)
                 {
                     autoClimbing = false;
-                    rb.velocity = new Vector2(rb.velocity.x, 0f);  // Сбрасываем накопленную вертикальную скорость
+                    rb.velocity = new Vector2(rb.velocity.x, 0f);
                 }
 
-                // Выполнение wall jump: если нажата клавиша движения от стены, выполняется отталкивающий прыжок.
+                // Выполняем wall jump по стандартной логике:
                 if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
                 {
                     rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
@@ -152,13 +153,14 @@ public class PlayerController : MonoBehaviour
                 {
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
                 }
+
                 StopWallSlide();
                 timeSinceDetached = 0f;
                 jumpCount = 0;
             }
             else
             {
-                // Обычный прыжок
+                // Обычный прыжок (на земле или в воздухе)
                 if (!grounded && Mathf.Abs(hInput) > 0.01f && rb.linearVelocity.x != 0 &&
                     (Mathf.Sign(rb.linearVelocity.x) != Mathf.Sign(hInput)))
                 {
