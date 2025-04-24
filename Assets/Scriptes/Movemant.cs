@@ -295,36 +295,57 @@ public class PlayerController : MonoBehaviour
         if (!isSlidingOnWall)
         {
             isSlidingOnWall = true;
-            wallSlideActive = false; // Сначала персонаж просто цепляется.
+            wallSlideActive = false; // сначала персонаж просто цепляется
             rb.linearVelocity = Vector2.zero;
-            rb.gravityScale = 0; // Гравитацию отключаем во время цепления.
+            rb.gravityScale = 0; // отключаем гравитацию во время цепления
             jumpCount = 0;
-            // Фиксируем сторону контакта со стеной из CollisionController.
+            // Фиксируем сторону контакта со стеной, полученную через CollisionController.
             wallContactSide = collisionController.GetLastWallContactSide();
 
-            // Запоминаем начальную позицию по Y и запускаем автоматический подъем.
-            wallClimbStartY = transform.position.y;
-            autoClimbing = true;
-            StartCoroutine(AutoClimbCoroutine());
-
-            StartCoroutine(WallHangCoroutine());
+            // Проверяем, летел ли персонаж вверх перед цеплением.
+            // Если вертикальная скорость положительна – запускаем автоматический подъём.
+            if (rb.velocity.y > 0)
+            {
+                wallClimbStartY = transform.position.y;
+                autoClimbing = true;
+                StartCoroutine(AutoClimbCoroutine());
+                // Ждём окончания авто-подъёма, затем запускаем таймер висения.
+                StartCoroutine(WaitForAutoClimbThenWallHang());
+            }
+            else
+            {
+                // Если персонаж не летел вверх – сразу запускаем стандартный таймер висения/скольжения.
+                StartCoroutine(WallHangCoroutine());
+            }
         }
     }
 
-    // Корутина автоматического подъёма:
+    // Короутина автоматического подъёма:
     private IEnumerator AutoClimbCoroutine()
     {
-        // Пока автоподъем включён и персонаж не поднялся на заданное расстояние:
+        // Пока персонаж не поднялся на wallAutoClimbDistance от начальной позиции:
         while (autoClimbing && transform.position.y < wallClimbStartY + wallAutoClimbDistance)
         {
             // Устанавливаем постоянную скорость подъёма.
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, wallAutoClimbSpeed);
             yield return null;
         }
-        // Как только дистанция достигнута или автоподъем принудительно остановлен:
+        // Как только дистанция достигнута – выключаем режим авто-подъёма
         autoClimbing = false;
-        // Сбрасываем вертикальную скорость, чтобы персонаж начал висеть.
+        // Сбрасываем вертикальную скорость, чтобы персонаж перешёл в режим висения.
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
+    }
+
+    // Короутина, которая ждёт завершения авто-подъёма, а затем запускает стандартный таймер висения:
+    private IEnumerator WaitForAutoClimbThenWallHang()
+    {
+        // Ждём, пока автоматический подъём не завершится.
+        while (autoClimbing)
+        {
+            yield return null;
+        }
+        // После авто-подъёма запускаем общую корутину, которая через wallHangTime определяет начало скольжения.
+        StartCoroutine(WallHangCoroutine());
     }
 
     private IEnumerator WallHangCoroutine()
@@ -333,7 +354,8 @@ public class PlayerController : MonoBehaviour
         if (isSlidingOnWall)
             wallSlideActive = true;
     }
-    // Метод StopWallSlide сбрасывает и режим автоматического подъёма:
+
+    // Метод StopWallSlide() сбрасывает все состояния цепления:
     private void StopWallSlide()
     {
         isSlidingOnWall = false;
