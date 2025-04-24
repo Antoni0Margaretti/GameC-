@@ -53,10 +53,6 @@ public class PlayerController : MonoBehaviour
     private float timeSinceDetached = 0f;
     // Сторона стены, к которой цепляемся: 1 – если справа; -1 – если слева.
     private int wallContactSide = 0;
-    // Параметры, которые можно настроить через Inspector:
-    public float inertialSlideFactor = 0.5f;  // множитель для расчёта дистанции скольжения
-    public float inertialDeceleration = 10f;   // скорость замедления (ед/сек)
-
 
     // Новые публичные переменные для настройки автоматического подъёма:
     public float wallAutoClimbDistance = 0.5f; // Расстояние подъёма (единиц)
@@ -319,39 +315,33 @@ public class PlayerController : MonoBehaviour
             isSlidingOnWall = true;
             wallSlideActive = false;
 
-            // Сначала запоминаем вертикальную скорость при зацеплении (до сброса)
-            initialGrabVerticalSpeed = rb.velocity.y;
+            // Сначала запоминаем вертикальную скорость персонажа при зацеплении
+            initialGrabVerticalSpeed = rb.linearVelocity.y;
 
-            // Затем обнуляем скорость и отключаем гравитацию
-            rb.velocity = Vector2.zero;
+            // Теперь обнуляем скорость и отключаем гравитацию для режима цепления.
+            rb.linearVelocity = Vector2.zero;
             rb.gravityScale = 0;
             jumpCount = 0;
 
-            // Сохраняем сторону контакта со стеной (например, через CollisionController)
+            // Сохраняем сторону контакта со стеной, полученную из CollisionController.
             wallContactSide = collisionController.GetLastWallContactSide();
 
-            // Если персонаж летел вверх – запускаем авто-подъём (как раньше)
+            // Если персонаж летел вверх в момент зацепления (вертикальная скорость была положительной),
+            // запускаем автоматический подъём.
             if (initialGrabVerticalSpeed > 0)
             {
                 wallClimbStartY = transform.position.y;
                 autoClimbing = true;
-                autoClimbCoroutine = StartCoroutine(AutoClimbCoroutine());
+                StartCoroutine(AutoClimbCoroutine());
                 StartCoroutine(WaitForAutoClimbThenWallHang());
-            }
-            // Если скорость была направлена вниз – запускаем инерционное скольжение
-            else if (initialGrabVerticalSpeed < 0)
-            {
-                // Запускаем корутину, которая симулирует "инерционное скольжение"
-                StartCoroutine(InertialSlideCoroutine());
             }
             else
             {
-                // Если скорость почти нулевая - сразу переходим в стандартное висение
+                // Иначе запускаем стандартный таймер висения/скольжения.
                 StartCoroutine(WallHangCoroutine());
             }
         }
     }
-
 
 
     // Короутина автоматического подъёма:
@@ -410,35 +400,6 @@ public class PlayerController : MonoBehaviour
         StopWallSlide();
         timeSinceDetached = 0f;
         jumpCount = 0;
-    }
-    private IEnumerator InertialSlideCoroutine()
-    {
-        float startY = transform.position.y;
-        // Определяем желаемую дистанцию инерционного скольжения:
-        float desiredSlideDistance = Mathf.Abs(initialGrabVerticalSpeed) * inertialSlideFactor;
-        float currentSlideDistance = 0f;
-
-        // В цикле, пока не проскользили нужную дистанцию:
-        while (currentSlideDistance < desiredSlideDistance)
-        {
-            // Получаем текущую вертикальную скорость (она должна быть отрицательной)
-            Vector2 vel = rb.velocity;
-            // Плавно уменьшить величину отрицательной скорости до 0, используя MoveTowards.
-            // Например, если vel.y = -X, в каждом кадре мы приближаем значение к 0 с шагом inertialDeceleration * Time.deltaTime.
-            float newVelY = Mathf.MoveTowards(vel.y, 0, inertialDeceleration * Time.deltaTime);
-            rb.velocity = new Vector2(vel.x, newVelY);
-
-            // Обновляем пройденное расстояние: 
-            // При падении transform.position.y уменьшается, поэтому разница (startY - текущая позиция) даст величину скольжения.
-            currentSlideDistance = startY - transform.position.y;
-            yield return null;
-        }
-
-        // По окончании инерционного скольжения принудительно обнуляем вертикальную скорость (переводим в режим висения)
-        rb.velocity = new Vector2(rb.velocity.x, 0f);
-
-        // Теперь запускаем корутину, которая через некоторое время перейдет в режим скольжения (стандартное висение)
-        StartCoroutine(WallHangCoroutine());
     }
 
     // Метод StopWallSlide() сбрасывает все состояния цепления:
