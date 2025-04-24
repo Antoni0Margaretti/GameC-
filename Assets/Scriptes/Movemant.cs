@@ -145,6 +145,14 @@ public class PlayerController : MonoBehaviour
         if (isSlidingOnWall && !touchingWall)
             StopWallSlide();
 
+        if (!isLedgeClimbing && collisionController.IsTouchingWall)
+        {
+            TryStartLedgeClimb();
+        }
+
+        // Отладочная отрисовка вертикального луча:
+        Debug.DrawRay(GetLedgeProbePoint(), Vector2.down * ledgeRayLength, Color.magenta);
+
         // --- Прыжок
         if (Input.GetButtonDown("Jump") && (grounded || jumpCount < maxJumps || isSlidingOnWall))
         {
@@ -502,6 +510,20 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Метод, возвращающий точку, из которой будем запускать вертикальный луч (probePoint)
+    private Vector2 GetLedgeProbePoint()
+    {
+        // Используем границы хитбокса для определения верхнего угла.
+        // margin позволяет немного выйти за границы хитбокса.
+        Bounds bounds = boxCollider.bounds;
+        float margin = 0.05f;
+        // wallContactSide определим через CollisionController:
+        int side = collisionController.GetLastWallContactSide(); // 1 или -1
+        // Вычисляем probePoint: x = центр хитбокса плюс extents.x с отступом, y = верхняя граница хитбокса.
+        Vector2 probePoint = new Vector2(bounds.center.x + side * (bounds.extents.x + margin), bounds.max.y);
+        return probePoint;
+    }
+
     private bool IsLedgeDetected()
     {
         // Используем Bounds хитбокса, чтобы определить его границы
@@ -540,7 +562,7 @@ public class PlayerController : MonoBehaviour
             // Целевая позиция рассчитывается как: подняться на ledgeClimbVerticalDistance и сдвинуться по X на ledgeClimbHorizontalOffset
             ledgeClimbTargetPos = ledgeClimbStartPos + new Vector2(wallContactSide * ledgeClimbHorizontalOffset, ledgeClimbVerticalDistance);
 
-            rb.velocity = Vector2.zero;
+            rb.linearVelocity = Vector2.zero;
             rb.gravityScale = 0;
             StartCoroutine(LedgeClimbRoutine());
         }
