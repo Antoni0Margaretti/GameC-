@@ -135,11 +135,16 @@ public class PlayerController : MonoBehaviour
         {
             if (isSlidingOnWall)
             {
-                // Для wall jump: если зажата клавиша движения от стены (в противоположную сторону от касания) –
-                // выполняем wall jump; иначе выполняем обычный вертикальный прыжок.
-                if (inputDir != 0 && inputDir == -collisionController.GetLastWallContactSide())
+                // Если авто-подъём активен, при прыжке его сразу прерываем.
+                if (autoClimbing)
                 {
-                    rb.linearVelocity = new Vector2(-collisionController.GetLastWallContactSide() * wallJumpHorizForce, wallJumpForce);
+                    autoClimbing = false;
+                }
+
+                // Выполнение wall jump или вертикального прыжка (аналогично стандартной логике при висении)
+                if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
+                {
+                    rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
                     StartCoroutine(WallJumpLockCoroutine());
                 }
                 else
@@ -153,10 +158,10 @@ public class PlayerController : MonoBehaviour
             else
             {
                 // Обычный прыжок
-                if (!grounded && Mathf.Abs(rawH) >= threshold && rb.linearVelocity.x != 0 &&
-                    (Mathf.Sign(rb.linearVelocity.x) != Mathf.Sign(rawH)))
+                if (!grounded && Mathf.Abs(hInput) > 0.01f && rb.linearVelocity.x != 0 &&
+                    (Mathf.Sign(rb.linearVelocity.x) != Mathf.Sign(hInput)))
                 {
-                    rb.linearVelocity = new Vector2(rawH * airMaxSpeed, jumpForce);
+                    rb.linearVelocity = new Vector2(hInput * airMaxSpeed, jumpForce);
                 }
                 else
                 {
@@ -299,7 +304,7 @@ public class PlayerController : MonoBehaviour
             wallSlideActive = false;
 
             // Сначала запоминаем вертикальную скорость персонажа при зацеплении
-            initialGrabVerticalSpeed = rb.velocity.y;
+            initialGrabVerticalSpeed = rb.linearVelocity.y;
 
             // Теперь обнуляем скорость и отключаем гравитацию для режима цепления.
             rb.linearVelocity = Vector2.zero;
