@@ -136,41 +136,40 @@ public class PlayerController : MonoBehaviour
         {
             if (isSlidingOnWall)
             {
-                // Если происходит авто-подъём и игрок нажимает прыжок, сначала переводим персонажа в состояние висения
+                // Если персонаж находится в режиме цепления, перед прыжком проверяем авто-подъём.
                 if (autoClimbing)
                 {
+                    // Останавливаем авто-подъём и сбрасываем вертикальную скорость.
                     autoClimbing = false;
                     if (autoClimbCoroutine != null)
                     {
                         StopCoroutine(autoClimbCoroutine);
                         autoClimbCoroutine = null;
                     }
-                    // Переход в состояние висения: сбрасываем накопленную вертикальную скорость
                     rb.velocity = new Vector2(rb.velocity.x, 0f);
-                    // (Дополнительно можно выполнить другие действия, связанные с переходом в режим висения, если требуется)
-                }
-
-                // Теперь выполняем стандартное отпрыгивание:
-                // Если игрок зажимает клавишу движения от стены, выполняется wall jump с горизонтальным отталкиванием.
-                if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
-                {
-                    rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
-                    StartCoroutine(WallJumpLockCoroutine());
+                    // Переход через корутину, чтобы позволить физике «освежиться».
+                    StartCoroutine(PerformWallJump());
                 }
                 else
                 {
-                    // Иначе – обычный вертикальный прыжок.
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                    // Если авто-подъём не активен, сразу выполняем wall jump:
+                    if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
+                    {
+                        rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
+                        StartCoroutine(WallJumpLockCoroutine());
+                    }
+                    else
+                    {
+                        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                    }
+                    StopWallSlide();
+                    timeSinceDetached = 0f;
+                    jumpCount = 0;
                 }
-
-                // Сбрасываем состояние цепления
-                StopWallSlide();
-                timeSinceDetached = 0f;
-                jumpCount = 0;
             }
             else
             {
-                // Обычный прыжок (на земле или в воздухе)
+                // Обработка обычного прыжка на земле или в воздухе.
                 if (!grounded && Mathf.Abs(hInput) > 0.01f && rb.linearVelocity.x != 0 &&
                     (Mathf.Sign(rb.linearVelocity.x) != Mathf.Sign(hInput)))
                 {
@@ -378,6 +377,29 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSeconds(wallHangTime);
         if (isSlidingOnWall)
             wallSlideActive = true;
+    }
+
+    private IEnumerator PerformWallJump()
+    {
+        // Даем время для завершения авто-подъёма (один кадр – минимально) 
+        yield return null;
+
+        // Выполняем стандартный wall jump:
+        // Если игрок зажимает клавишу движения, противоположную стороне стены,
+        // выполняется wall jump с отталкивающей силой.
+        if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
+        {
+            rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
+            StartCoroutine(WallJumpLockCoroutine());
+        }
+        else
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+        }
+
+        StopWallSlide();
+        timeSinceDetached = 0f;
+        jumpCount = 0;
     }
 
     // Метод StopWallSlide() сбрасывает все состояния цепления:
