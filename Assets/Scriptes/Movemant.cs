@@ -118,13 +118,15 @@ public class PlayerController : MonoBehaviour
         {
             if (isSlidingOnWall)
             {
-                if ((wallContactSide == 1 && facingRight) || (wallContactSide == -1 && !facingRight))
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-                else
+                // Выполняем wall jump только если зажата кнопка движения от стены.
+                // Это условие: Mathf.Sign(hInput) должна быть равна -wallContactSide.
+                if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
                 {
                     rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
                     StartCoroutine(WallJumpLockCoroutine());
                 }
+                else
+                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
                 StopWallSlide();
                 timeSinceDetached = 0f;
                 jumpCount = 0;
