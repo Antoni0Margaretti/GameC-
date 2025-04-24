@@ -57,6 +57,7 @@ public class PlayerController : MonoBehaviour
     // Новые публичные переменные для настройки автоматического подъёма:
     public float wallAutoClimbDistance = 0.5f; // Расстояние подъёма (единиц)
     public float wallAutoClimbSpeed = 2f;      // Скорость подъёма (ед/с)
+    private float initialGrabVerticalSpeed = 0f;
 
     // Новые приватные переменные для состояния автоматического подъёма:
     private bool autoClimbing = false;
@@ -295,30 +296,36 @@ public class PlayerController : MonoBehaviour
         if (!isSlidingOnWall)
         {
             isSlidingOnWall = true;
-            wallSlideActive = false; // сначала персонаж просто цепляется
+            wallSlideActive = false;
+
+            // Сначала запоминаем вертикальную скорость персонажа при зацеплении
+            initialGrabVerticalSpeed = rb.velocity.y;
+
+            // Теперь обнуляем скорость и отключаем гравитацию для режима цепления.
             rb.linearVelocity = Vector2.zero;
-            rb.gravityScale = 0; // отключаем гравитацию во время цепления
+            rb.gravityScale = 0;
             jumpCount = 0;
-            // Фиксируем сторону контакта со стеной, полученную через CollisionController.
+
+            // Сохраняем сторону контакта со стеной, полученную из CollisionController.
             wallContactSide = collisionController.GetLastWallContactSide();
 
-            // Проверяем, летел ли персонаж вверх перед цеплением.
-            // Если вертикальная скорость положительна – запускаем автоматический подъём.
-            if (rb.velocity.y > 0)
+            // Если персонаж летел вверх в момент зацепления (вертикальная скорость была положительной),
+            // запускаем автоматический подъём.
+            if (initialGrabVerticalSpeed > 0)
             {
                 wallClimbStartY = transform.position.y;
                 autoClimbing = true;
                 StartCoroutine(AutoClimbCoroutine());
-                // Ждём окончания авто-подъёма, затем запускаем таймер висения.
                 StartCoroutine(WaitForAutoClimbThenWallHang());
             }
             else
             {
-                // Если персонаж не летел вверх – сразу запускаем стандартный таймер висения/скольжения.
+                // Иначе запускаем стандартный таймер висения/скольжения.
                 StartCoroutine(WallHangCoroutine());
             }
         }
     }
+
 
     // Короутина автоматического подъёма:
     private IEnumerator AutoClimbCoroutine()
