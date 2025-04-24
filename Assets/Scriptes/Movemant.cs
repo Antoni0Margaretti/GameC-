@@ -10,10 +10,8 @@ public class PlayerController : MonoBehaviour
 
     // --- Параметры движения
     public float speed = 10f;             // Максимальная скорость на земле.
-    // Для управления в воздухе:
-    public float airMaxSpeed = 2f;          // Целевая скорость в воздухе при наличии ввода (обычно гораздо ниже).
+    public float airMaxSpeed = 2f;          // Целевая скорость в воздухе.
     public float airAcceleration = 5f;
-
     public float airDrag = 0.1f;
     public float airControlInfluence = 0.2f;
     public float jumpForce = 10f;
@@ -21,20 +19,20 @@ public class PlayerController : MonoBehaviour
     private int jumpCount;
 
     // --- Параметры рывка (Dash)
-    public float dashDistance = 5f;         // Расстояние, которое должен пройти рывок.
-    public float dashSpeed = 20f;           // Скорость рывка (задаётся независимо).
+    public float dashDistance = 5f;
+    public float dashSpeed = 20f;
     public float dashCooldown = 1f;
     private bool canDash = true;
     private bool isInvulnerable = false;
-    private bool isDashing = false;         // Блокирует управление во время рывка.
+    private bool isDashing = false;
     public float dashAfterLockDuration = 0.2f;
     private bool isDashLocked = false;
-    public float dashImpulseRetention = 0.2f; // Доля импульса, сохраняемая после завершения рывка в воздухе.
+    public float dashImpulseRetention = 0.2f;
 
     // --- Параметры подката (Slide) и приседа (Crouch)
     public float slideSpeed = 8f;
     public float slideDuration = 0.5f;
-    public float slideBoost = 1.5f;         // Коэффициент увеличения скорости при подкате.
+    public float slideBoost = 1.5f;
     private bool isSliding = false;
     private bool isCrouching = false;
 
@@ -42,48 +40,51 @@ public class PlayerController : MonoBehaviour
     public float jumpImpulseFactor = 0.2f;
 
     // --- Параметры цепления за стену (Wall Hang / Slide)
-    public float wallHangTime = 0.5f;         // Время, которое персонаж висит неподвижно после цепления.
-    public float wallSlideAcceleration = 10f; // Ускорение скольжения по стене (ед./сек).
-    public float wallSlideMaxSpeed = 5f;      // Максимальная скорость скольжения.
-    public float wallJumpForce = 10f;         // Вертикальная компонента wall jump.
-    public float wallJumpHorizForce = 5f;     // Горизонтальная составляющая wall jump (фиксированная).
+    public float wallHangTime = 0.5f;
+    public float wallSlideAcceleration = 10f;
+    public float wallSlideMaxSpeed = 5f;
+    public float wallJumpForce = 10f;
+    public float wallJumpHorizForce = 5f;
     private bool isSlidingOnWall = false;
-    private bool wallSlideActive = false;     // false – режим «висения», true – режим ускоренного скольжения.
-    public float wallDetachCooldown = 0.3f;     // Минимальное время между цеплениями.
+    private bool wallSlideActive = false;
+    public float wallDetachCooldown = 0.3f;
     private float timeSinceDetached = 0f;
-    // Сторона стены, к которой цепляемся: 1 – если справа; -1 – если слева.
+    // Сторона стены, к которой цепляемся: 1 – справа, -1 – слева.
     private int wallContactSide = 0;
 
-    // Новые публичные переменные для настройки автоматического подъёма:
-    public float wallAutoClimbDistance = 0.5f; // Расстояние подъёма (единиц)
-    public float wallAutoClimbSpeed = 2f;      // Скорость подъёма (ед/с)
+    // --- Автоматический подъём (Auto Climb)
+    public float wallAutoClimbDistance = 0.5f;
+    public float wallAutoClimbSpeed = 2f;
     private float initialGrabVerticalSpeed = 0f;
-    private Coroutine autoClimbCoroutine = null;  // для хранения ссылки на корутину авто-подъёма
-
-    // Новые приватные переменные для состояния автоматического подъёма:
+    private Coroutine autoClimbCoroutine = null;
     private bool autoClimbing = false;
     private float wallClimbStartY = 0f;
 
-    // --- Глобальная переменная стандартной гравитации.
-    public float defaultGravityScale;     // Задаётся через Inspector или инициализируется в Start.
-
+    // --- Стандартная гравитация
+    public float defaultGravityScale;
     // --- Блокировка управления после wall jump.
     private bool isWallJumping = false;
     public float wallJumpLockDuration = 0.2f;
-
-    // --- Параметры гравитации при цеплении за стену.
-    public float wallHangGravityScale = 0f;  // gravityScale при цеплении.
+    // --- Гравитация при цеплении.
+    public float wallHangGravityScale = 0f;
     private float originalGravityScale;
-
-    // --- Флаг направления (куда смотрит персонаж).
+    // --- Флаг направления.
     private bool facingRight = true;
-
-    // --- Переменные хитбокса (для восстановления после приседа/подката).
+    // --- Хитбокс (для восстановления после приседа/подката)
     private Vector2 normalSize;
     private Vector2 normalOffset;
-
-    // --- Переменная для хранения горизонтального ввода (обновляется в Update).
+    // --- Горизонтальный ввод
     private float hInput = 0f;
+
+    // --- Параметры залезания на край (Ledge Climb)
+    public Transform ledgeRayOrigin;         // Точка, из которой идёт raycast вниз для определения края.
+    public float ledgeRayLength = 0.1f;        // Длина луча проверки.
+    public float ledgeClimbVerticalDistance = 0.6f;
+    public float ledgeClimbHorizontalOffset = 0.3f;
+    public float ledgeClimbDuration = 0.4f;
+    private bool isLedgeClimbing = false;
+    private Vector2 ledgeClimbStartPos;
+    private Vector2 ledgeClimbTargetPos;
 
     void Start()
     {
@@ -92,13 +93,13 @@ public class PlayerController : MonoBehaviour
         boxCollider = GetComponent<BoxCollider2D>();
 
         originalGravityScale = rb.gravityScale;
+        defaultGravityScale = originalGravityScale;
         normalSize = boxCollider.size;
         normalOffset = boxCollider.offset;
     }
 
     void Update()
     {
-        // Используем GetAxisRaw для мгновенного ввода по горизонтали.
         float rawH = Input.GetAxisRaw("Horizontal");
         float threshold = 0.2f;
         int inputDir = 0;
@@ -112,7 +113,7 @@ public class PlayerController : MonoBehaviour
         bool grounded = collisionController.IsGrounded;
         bool touchingWall = collisionController.IsTouchingWall;
 
-        // Обновляем состояние динамического хитбокса через CollisionController.
+        // Обновление хитбокса
         if (isSliding)
             collisionController.currentHitboxState = CollisionController.HitboxState.Sliding;
         else if (isCrouching)
@@ -120,13 +121,12 @@ public class PlayerController : MonoBehaviour
         else
             collisionController.currentHitboxState = CollisionController.HitboxState.Normal;
 
-        // Поворот персонажа согласно направлению ввода.
+        // Поворот персонажа
         if (inputDir > 0 && !facingRight)
             Flip();
         else if (inputDir < 0 && facingRight)
             Flip();
 
-        // Если персонаж цепляется за стену, но уже не касается её – прекращаем цепление.
         if (isSlidingOnWall && !touchingWall)
             StopWallSlide();
 
@@ -135,10 +135,8 @@ public class PlayerController : MonoBehaviour
         {
             if (isSlidingOnWall)
             {
-                // Если персонаж находится в режиме цепления, перед прыжком проверяем авто-подъём.
                 if (autoClimbing)
                 {
-                    // Останавливаем авто-подъём и сбрасываем вертикальную скорость.
                     autoClimbing = false;
                     if (autoClimbCoroutine != null)
                     {
@@ -146,12 +144,10 @@ public class PlayerController : MonoBehaviour
                         autoClimbCoroutine = null;
                     }
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
-                    // Переход через корутину, чтобы позволить физике «освежиться».
                     StartCoroutine(PerformWallJump());
                 }
                 else
                 {
-                    // Если авто-подъём не активен, сразу выполняем wall jump:
                     if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
                     {
                         rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
@@ -168,9 +164,8 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                // Обработка обычного прыжка на земле или в воздухе.
                 if (!grounded && Mathf.Abs(hInput) > 0.01f && rb.linearVelocity.x != 0 &&
-                    (Mathf.Sign(rb.linearVelocity.x) != Mathf.Sign(hInput)))
+                    Mathf.Sign(rb.linearVelocity.x) != Mathf.Sign(hInput))
                 {
                     rb.linearVelocity = new Vector2(hInput * airMaxSpeed, jumpForce);
                 }
@@ -188,29 +183,19 @@ public class PlayerController : MonoBehaviour
             StopWallSlide();
         }
 
-        // --- Цепление за стеной (Wall Hang) и автоматический подъём (Auto Climb)
-        // Если персонаж касается стены, не на земле, прошло нужное время отсоединения
-        // и игрок зажимает клавишу движения в ту же сторону, что и стена.
+        // --- Цепление за стеной (Wall Hang) и авто-подъём (Auto Climb)
         if (collisionController.IsTouchingWall && !grounded && timeSinceDetached >= wallDetachCooldown)
         {
             if (!isSlidingOnWall)
             {
-                // Если цепления ещё не было, и направление ввода совпадает с касанием – начинаем цепление.
                 if (inputDir == collisionController.GetLastWallContactSide())
-                {
                     StartWallHang();
-                }
             }
             else
             {
-                // Если персонаж уже в режиме цепления...
-                // Если автоматический подъём запущен, то не переопределяем вертикальную скорость – корутина это делает.
                 if (!autoClimbing)
                 {
-                    // Здесь можно сохранить возможность регулирования вертикальной скорости вручную,
-                    // но по вашему условию требуется автоматический подъём.
-                    // Поэтому, если player не нажимает кнопку вверх, остается висение/скольжение вниз.
-                    // (В нашем варианте автоматический подъем уже запущен в StartWallHang.)
+                    // Дополнительная логика, если требуется.
                 }
             }
         }
@@ -232,9 +217,7 @@ public class PlayerController : MonoBehaviour
                     StartCoroutine(Dash());
             }
             else
-            {
                 StartCoroutine(Dash());
-            }
         }
 
         if (grounded)
@@ -250,9 +233,7 @@ public class PlayerController : MonoBehaviour
                 isCrouching = false;
         }
         else
-        {
             isCrouching = false;
-        }
 
         if (grounded && Input.GetKey(KeyCode.LeftControl) && Mathf.Abs(rb.linearVelocity.x) > 0.1f && !isSliding && !isCrouching)
             StartCoroutine(Slide(rb.linearVelocity.x));
@@ -264,11 +245,12 @@ public class PlayerController : MonoBehaviour
         }
         if (!isSlidingOnWall)
             collisionController.ignoreFlipForWallChecks = false;
+
+        // --- Механика залезания на край (Ledge Climb)
+        if (!isLedgeClimbing && !isWallJumping && !autoClimbing && !isSlidingOnWall && collisionController.IsTouchingWall)
+            TryStartLedgeClimb();
     }
 
-    // Обработка физики в FixedUpdate.
-    // Если ввода отсутствует, горизонтальная скорость остаётся неизменной (сохраняется весь импульс).
-    // Если же ввод есть — изменяем скорость только если он направлен противоположно или если её недостаточно.
     void FixedUpdate()
     {
         bool grounded = collisionController.IsGrounded;
@@ -282,10 +264,9 @@ public class PlayerController : MonoBehaviour
             {
                 if (Mathf.Abs(hInput) > 0.01f)
                 {
-                    // Если текущее направление совпадает с вводом и скорость уже больше целевой, не изменяем ее:
                     if (Mathf.Sign(rb.linearVelocity.x) == Mathf.Sign(hInput) && Mathf.Abs(rb.linearVelocity.x) > Mathf.Abs(hInput * airMaxSpeed))
                     {
-                        // Не меняем, просто сохраняем импульс.
+                        // Сохраняем импульс.
                     }
                     else
                     {
@@ -296,7 +277,6 @@ public class PlayerController : MonoBehaviour
                 }
                 else
                 {
-                    // Если ввод отсутствует, применяем небольшое замедление горизонтальной скорости.
                     float dragFactor = 1f - airDrag * Time.fixedDeltaTime;
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x * dragFactor, rb.linearVelocity.y);
                 }
@@ -311,20 +291,11 @@ public class PlayerController : MonoBehaviour
         {
             isSlidingOnWall = true;
             wallSlideActive = false;
-
-            // Сначала запоминаем вертикальную скорость персонажа при зацеплении
             initialGrabVerticalSpeed = rb.linearVelocity.y;
-
-            // Теперь обнуляем скорость и отключаем гравитацию для режима цепления.
             rb.linearVelocity = Vector2.zero;
             rb.gravityScale = 0;
             jumpCount = 0;
-
-            // Сохраняем сторону контакта со стеной, полученную из CollisionController.
             wallContactSide = collisionController.GetLastWallContactSide();
-
-            // Если персонаж летел вверх в момент зацепления (вертикальная скорость была положительной),
-            // запускаем автоматический подъём.
             if (initialGrabVerticalSpeed > 0)
             {
                 wallClimbStartY = transform.position.y;
@@ -333,51 +304,35 @@ public class PlayerController : MonoBehaviour
                 StartCoroutine(WaitForAutoClimbThenWallHang());
             }
             else
-            {
-                // Иначе запускаем стандартный таймер висения/скольжения.
                 StartCoroutine(WallHangCoroutine());
-            }
         }
     }
 
-    // Короутина автоматического подъёма (Auto Climb)
     private IEnumerator AutoClimbCoroutine()
     {
-        // Цикл выполняется, пока авто-подъём активен и пока не достигнута заданная дистанция подъёма.
         while (autoClimbing && transform.position.y < wallClimbStartY + wallAutoClimbDistance)
         {
-            // Если персонаж перестаёт полностью прилегать к стене...
             if (!collisionController.IsTouchingWall)
             {
-                // Останавливаем авто-подъём и переводим персонажа в режим висения.
                 autoClimbing = false;
                 rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
-                // Можно сразу вызвать корутину перехода в режим висения:
                 StartCoroutine(WallHangCoroutine());
-                yield break; // Выходим из корутины, так как контакт потерян.
+                yield break;
             }
-
-            // Если контакт сохранён — продолжаем подъем с заданной скоростью
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, wallAutoClimbSpeed);
             yield return null;
         }
-
-        // По окончании подъёма (либо дистанция достигнута) выключаем авто-подъём
         autoClimbing = false;
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
-        // После завершения авто-подъёма запускаем переход в режим висения (если ещё не вызван)
         StartCoroutine(WallHangCoroutine());
     }
 
-    // Короутина, которая ждёт завершения авто-подъёма, а затем запускает стандартный таймер висения:
     private IEnumerator WaitForAutoClimbThenWallHang()
     {
-        // Ждём, пока автоматический подъём не завершится.
         while (autoClimbing)
         {
             yield return null;
         }
-        // После авто-подъёма запускаем общую корутину, которая через wallHangTime определяет начало скольжения.
         StartCoroutine(WallHangCoroutine());
     }
 
@@ -390,28 +345,19 @@ public class PlayerController : MonoBehaviour
 
     private IEnumerator PerformWallJump()
     {
-        // Даем время для завершения авто-подъёма (один кадр – минимально) 
         yield return null;
-
-        // Выполняем стандартный wall jump:
-        // Если игрок зажимает клавишу движения, противоположную стороне стены,
-        // выполняется wall jump с отталкивающей силой.
         if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
         {
             rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
             StartCoroutine(WallJumpLockCoroutine());
         }
         else
-        {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-        }
-
         StopWallSlide();
         timeSinceDetached = 0f;
         jumpCount = 0;
     }
 
-    // Метод StopWallSlide() сбрасывает все состояния цепления:
     private void StopWallSlide()
     {
         isSlidingOnWall = false;
@@ -421,45 +367,29 @@ public class PlayerController : MonoBehaviour
         rb.gravityScale = defaultGravityScale;
     }
 
-    // --- Рывок (Dash) – одинаковое поведение на земле и в воздухе.
+    // --- Рывок (Dash)
     private IEnumerator Dash()
     {
         isDashing = true;
         canDash = false;
-
-        // Сбрасываем вертикальную составляющую, чтобы рывок был чисто горизонтальным.
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
-
         float dashDirection = (facingRight ? 1f : -1f);
-        float duration = dashDistance / dashSpeed;  // Длительность dash = расстояние / скорость.
+        float duration = dashDistance / dashSpeed;
         float originalGravity = defaultGravityScale;
-
-        // Отключаем гравитацию на время dash.
         rb.gravityScale = 0;
-
-        // Устанавливаем фиксированную горизонтальную скорость dash.
         rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0);
-
         yield return new WaitForSeconds(duration);
-
-        // Восстанавливаем гравитацию.
         rb.gravityScale = originalGravity;
         yield return new WaitForSeconds(0.1f);
-
-        // Если персонаж находится в воздухе, уменьшаем горизонтальную скорость до некоторой доли рывкового импульса.
         if (!collisionController.IsGrounded)
-        {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x * dashImpulseRetention, rb.linearVelocity.y);
-        }
-
         isDashing = false;
         yield return new WaitForSeconds(dashCooldown);
         canDash = true;
         isInvulnerable = false;
     }
 
-
-    // --- Подкат (Slide) – выполняется, пока удерживается клавиша Ctrl (или S).
+    // --- Подкат (Slide)
     private IEnumerator Slide(float moveInput)
     {
         isSliding = true;
@@ -494,7 +424,6 @@ public class PlayerController : MonoBehaviour
         Vector3 s = transform.localScale;
         s.x *= -1;
         transform.localScale = s;
-        // Сброс буфера контакта, чтобы старые данные не влияли.
         collisionController.ResetWallContactBuffer();
     }
 
@@ -504,5 +433,41 @@ public class PlayerController : MonoBehaviour
         isWallJumping = true;
         yield return new WaitForSeconds(wallJumpLockDuration);
         isWallJumping = false;
+    }
+
+    // --- Механика залезания на край (Ledge Climb)
+    private void TryStartLedgeClimb()
+    {
+        if (ledgeRayOrigin == null) return;
+        RaycastHit2D hit = Physics2D.Raycast(ledgeRayOrigin.position, Vector2.down, ledgeRayLength, collisionController.groundLayer);
+        if (hit.collider == null && collisionController.IsTouchingWall())
+        {
+            if (!isLedgeClimbing)
+            {
+                isLedgeClimbing = true;
+                ledgeClimbStartPos = transform.position;
+                wallContactSide = collisionController.GetLastWallContactSide();
+                ledgeClimbTargetPos = ledgeClimbStartPos + new Vector2(wallContactSide * ledgeClimbHorizontalOffset, ledgeClimbVerticalDistance);
+                rb.velocity = Vector2.zero;
+                rb.gravityScale = 0;
+                StartCoroutine(LedgeClimbRoutine());
+            }
+        }
+    }
+
+    private IEnumerator LedgeClimbRoutine()
+    {
+        float timer = 0f;
+        while (timer < ledgeClimbDuration)
+        {
+            float t = timer / ledgeClimbDuration;
+            float smoothT = Mathf.SmoothStep(0f, 1f, t);
+            transform.position = Vector2.Lerp(ledgeClimbStartPos, ledgeClimbTargetPos, smoothT);
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        transform.position = ledgeClimbTargetPos;
+        isLedgeClimbing = false;
+        rb.gravityScale = defaultGravityScale;
     }
 }
