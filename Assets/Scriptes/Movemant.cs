@@ -448,7 +448,7 @@ public class PlayerController : MonoBehaviour
                 ledgeClimbStartPos = transform.position;
                 wallContactSide = collisionController.GetLastWallContactSide();
                 ledgeClimbTargetPos = ledgeClimbStartPos + new Vector2(wallContactSide * ledgeClimbHorizontalOffset, ledgeClimbVerticalDistance);
-                rb.velocity = Vector2.zero;
+                rb.linearVelocity = Vector2.zero;
                 rb.gravityScale = 0;
                 StartCoroutine(LedgeClimbRoutine());
             }
