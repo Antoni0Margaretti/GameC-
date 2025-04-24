@@ -453,9 +453,11 @@ public class PlayerController : MonoBehaviour
         }
 
         isDashing = false;
+        yield return new WaitForSeconds(dashCooldown);
         canDash = true;
         isInvulnerable = false;
     }
+
 
     // --- Подкат (Slide) – выполняется, пока удерживается клавиша Ctrl (или S).
     private IEnumerator Slide(float moveInput)
