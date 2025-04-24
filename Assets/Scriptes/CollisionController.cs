@@ -217,4 +217,12 @@ public class CollisionController : MonoBehaviour
             Gizmos.DrawLine(backTop, backBottom);
         }
     }
+    public bool IsLedgeClear(Transform ledgeOrigin, float rayLength)
+    {
+        // Если raycast вниз с ledgeOrigin не находит коллайдер в слое groundLayer,
+        // то под этой точкой нет пола.
+        RaycastHit2D hit = Physics2D.Raycast(ledgeOrigin.position, Vector2.down, rayLength, groundLayer);
+        Debug.DrawRay(ledgeOrigin.position, Vector2.down * rayLength, Color.yellow); // отладка
+        return (hit.collider == null);
+    }
 }

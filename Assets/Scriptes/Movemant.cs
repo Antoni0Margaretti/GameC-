@@ -85,6 +85,21 @@ public class PlayerController : MonoBehaviour
     // --- Переменная для хранения горизонтального ввода (обновляется в Update).
     private float hInput = 0f;
 
+    [Header("Ledge Climb Settings")]
+    // Если хотите вручную задавать ориентир для отрисовки отладочного представления — можно оставить.
+    public Transform ledgeRayOrigin;         // Этот объект можно использовать для визуальной отладки (не обязателен, см. ниже)
+
+    // Параметры, определяющие работу механики:
+    public float ledgeRayLength = 0.1f;             // Длина вертикального луча, проверяющего наличие пола за краем
+    public float ledgeClimbVerticalDistance = 0.6f; // На сколько единиц поднимается персонаж при залезании
+    public float ledgeClimbHorizontalOffset = 0.3f;   // Горизонтальное смещение (выход на платформу)
+    public float ledgeClimbDuration = 0.4f;         // Время, за которое происходит залезание
+
+    // Локальные переменные для состояния залезания
+    private bool isLedgeClimbing = false;
+    private Vector2 ledgeClimbStartPos;
+    private Vector2 ledgeClimbTargetPos;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -486,6 +501,66 @@ public class PlayerController : MonoBehaviour
                 isCrouching = true;
         }
     }
+
+    private bool IsLedgeDetected()
+    {
+        // Используем Bounds хитбокса, чтобы определить его границы
+        Bounds bounds = boxCollider.bounds;
+
+        // Задаём небольшой отступ (margin) за пределы хитбокса. Например, 0.05 единиц.
+        float margin = 0.05f;
+
+        // Вычисляем точку для луча:
+        // Берём центр по X хитбокса плюс смещение по X равное (extents.x + margin) умноженное на сторону стены.
+        // По Y берём верхнюю точку хитбокса.
+        Vector2 probePoint = new Vector2(bounds.center.x + wallContactSide * (bounds.extents.x + margin), bounds.max.y);
+
+        // Отправляем луч вниз на расстояние ledgeRayLength по слою groundLayer
+        RaycastHit2D hit = Physics2D.Raycast(probePoint, Vector2.down, ledgeRayLength, collisionController.groundLayer);
+
+        // Отладочная отрисовка (видна в режиме Play при включенных Gizmos)
+        Debug.DrawRay(probePoint, Vector2.down * ledgeRayLength, Color.magenta);
+
+        // Если луч пересекает пол, значит, край обнаружен.
+        return (hit.collider != null);
+    }
+
+    private void TryStartLedgeClimb()
+    {
+        if (ledgeRayOrigin == null) return; // На случай, если детектор не назначен
+
+        // Проверяем: если вертикальный луч, вынесенный за хитбокс, обнаруживает пол...
+        if (!isLedgeClimbing && collisionController.IsTouchingWall && IsLedgeDetected())
+        {
+            // Начинаем залезание на край.
+            isLedgeClimbing = true;
+            ledgeClimbStartPos = transform.position;
+            wallContactSide = collisionController.GetLastWallContactSide(); // определяем сторону контакта
+
+            // Целевая позиция рассчитывается как: подняться на ledgeClimbVerticalDistance и сдвинуться по X на ledgeClimbHorizontalOffset
+            ledgeClimbTargetPos = ledgeClimbStartPos + new Vector2(wallContactSide * ledgeClimbHorizontalOffset, ledgeClimbVerticalDistance);
+
+            rb.velocity = Vector2.zero;
+            rb.gravityScale = 0;
+            StartCoroutine(LedgeClimbRoutine());
+        }
+    }
+
+    private IEnumerator LedgeClimbRoutine()
+    {
+        float timer = 0f;
+        while (timer < ledgeClimbDuration)
+        {
+            float t = Mathf.SmoothStep(0f, 1f, timer / ledgeClimbDuration);
+            transform.position = Vector2.Lerp(ledgeClimbStartPos, ledgeClimbTargetPos, t);
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        transform.position = ledgeClimbTargetPos;
+        isLedgeClimbing = false;
+        rb.gravityScale = defaultGravityScale;
+    }
+
 
     // --- Изменение направления (Flip)
     private void Flip()
