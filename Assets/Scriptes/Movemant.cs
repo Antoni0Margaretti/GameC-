@@ -554,13 +554,13 @@ public class PlayerController : MonoBehaviour
     {
         // Если мы прижаты к стене и вертикальный луч пересекает пол,
         // считаем, что персонаж находится на краю, и запускаем залезание.
-        if (collisionController.IsTouchingWall && IsLedgeDetected())
+        if (IsLedgeDetected())
         {
             isLedgeClimbing = true;
             ledgeClimbStartPos = transform.position;
             int side = collisionController.GetLastWallContactSide();
             ledgeClimbTargetPos = ledgeClimbStartPos + new Vector2(side * ledgeClimbHorizontalOffset, ledgeClimbVerticalDistance);
-            rb.velocity = Vector2.zero;
+            rb.linearVelocity = Vector2.zero;
             rb.gravityScale = 0;
             StartCoroutine(LedgeClimbRoutine());
         }
