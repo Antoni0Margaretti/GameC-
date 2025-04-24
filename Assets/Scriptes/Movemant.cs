@@ -58,6 +58,7 @@ public class PlayerController : MonoBehaviour
     public float wallAutoClimbDistance = 0.5f; // Расстояние подъёма (единиц)
     public float wallAutoClimbSpeed = 2f;      // Скорость подъёма (ед/с)
     private float initialGrabVerticalSpeed = 0f;
+    private Coroutine autoClimbCoroutine = null;  // для хранения ссылки на корутину авто-подъёма
 
     // Новые приватные переменные для состояния автоматического подъёма:
     private bool autoClimbing = false;
@@ -135,15 +136,22 @@ public class PlayerController : MonoBehaviour
         {
             if (isSlidingOnWall)
             {
-                // Если во время автоматического подъёма (autoClimbing) игрок нажимает Space,
-                // сразу отключаем авто-подъём и обнуляем вертикальную скорость.
+                // Если происходит авто-подъём и игрок нажимает прыжок, сначала переводим персонажа в состояние висения
                 if (autoClimbing)
                 {
                     autoClimbing = false;
+                    if (autoClimbCoroutine != null)
+                    {
+                        StopCoroutine(autoClimbCoroutine);
+                        autoClimbCoroutine = null;
+                    }
+                    // Переход в состояние висения: сбрасываем накопленную вертикальную скорость
                     rb.velocity = new Vector2(rb.velocity.x, 0f);
+                    // (Дополнительно можно выполнить другие действия, связанные с переходом в режим висения, если требуется)
                 }
 
-                // Выполняем wall jump по стандартной логике:
+                // Теперь выполняем стандартное отпрыгивание:
+                // Если игрок зажимает клавишу движения от стены, выполняется wall jump с горизонтальным отталкиванием.
                 if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
                 {
                     rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
@@ -151,9 +159,11 @@ public class PlayerController : MonoBehaviour
                 }
                 else
                 {
+                    // Иначе – обычный вертикальный прыжок.
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
                 }
 
+                // Сбрасываем состояние цепления
                 StopWallSlide();
                 timeSinceDetached = 0f;
                 jumpCount = 0;
