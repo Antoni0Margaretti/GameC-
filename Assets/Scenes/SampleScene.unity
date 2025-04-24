@@ -712,7 +712,7 @@ MonoBehaviour:
   customWallCheckOffset: {x: 0, y: 0}
   customWallCheckSize: {x: 1.05, y: 2}
   modelCenterOffset: {x: 0, y: 0}
-  wallContactGracePeriod: 0
+  wallContactGracePeriod: 0.5
   normalHitboxSize: {x: 4.5, y: 9.6}
   normalHitboxOffset: {x: 0, y: 0}
   crouchingHitboxSize: {x: 4.5, y: 6.4}
@@ -732,12 +732,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf448b4905daac54693e09402ca15381, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 10
-  airMaxSpeed: 10
+  speed: 7
+  airMaxSpeed: 7
   airAcceleration: 25
   airDrag: 1
   airControlInfluence: 1
-  jumpForce: 12
+  jumpForce: 10
   maxJumps: 1
   dashDistance: 2
   dashSpeed: 40
@@ -751,8 +751,8 @@ MonoBehaviour:
   wallHangTime: 0.5
   wallSlideAcceleration: 10
   wallSlideMaxSpeed: 30
-  wallJumpForce: 12
-  wallJumpHorizForce: 12
+  wallJumpForce: 10
+  wallJumpHorizForce: 8
   wallDetachCooldown: 0.5
   defaultGravityScale: 2.6
   wallJumpLockDuration: 0.2
