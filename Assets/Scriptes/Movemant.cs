@@ -135,13 +135,14 @@ public class PlayerController : MonoBehaviour
         {
             if (isSlidingOnWall)
             {
-                // Если авто-подъём активен, при прыжке его сразу прерываем.
+                // Если персонаж находится в режиме авто-подъёма, сразу его отключаем и сбрасываем вертикальную скорость.
                 if (autoClimbing)
                 {
                     autoClimbing = false;
+                    rb.velocity = new Vector2(rb.velocity.x, 0f);  // Сбрасываем накопленную вертикальную скорость
                 }
 
-                // Выполнение wall jump или вертикального прыжка (аналогично стандартной логике при висении)
+                // Выполнение wall jump: если нажата клавиша движения от стены, выполняется отталкивающий прыжок.
                 if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
                 {
                     rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
