@@ -95,6 +95,10 @@ public class PlayerController : MonoBehaviour
     public float ledgeClimbHorizontalOffset = 0.3f;   // Горизонтальное смещение (выход на платформу)
     public float ledgeClimbDuration = 0.4f;         // Время, за которое происходит залезание
 
+    // Новая переменная: дополнительное смещение для probe point. 
+    // Значение по X позволяет регулировать горизонтальное положение луча.
+    public Vector2 ledgeProbeOffset;  // Например, (0.3, 0) установит дополнительное смещение вправо.
+
     // Локальные переменные для состояния залезания
     private bool isLedgeClimbing = false;
     private Vector2 ledgeClimbStartPos;
@@ -513,39 +517,25 @@ public class PlayerController : MonoBehaviour
     // Метод, возвращающий точку, из которой будем запускать вертикальный луч (probePoint)
     private Vector2 GetLedgeProbePoint()
     {
-        // Используем границы хитбокса для определения верхнего угла.
-        // margin позволяет немного выйти за границы хитбокса.
+        // Получаем размеры хитбокса персонажа
         Bounds bounds = boxCollider.bounds;
-        float margin = 0.05f;
-        // wallContactSide определим через CollisionController:
-        int side = collisionController.GetLastWallContactSide(); // 1 или -1
-        // Вычисляем probePoint: x = центр хитбокса плюс extents.x с отступом, y = верхняя граница хитбокса.
-        Vector2 probePoint = new Vector2(bounds.center.x + side * (bounds.extents.x + margin), bounds.max.y);
-        return probePoint;
+        // Получаем сторону контакта (1 – если стена справа; -1 – если слева)
+        int side = collisionController.GetLastWallContactSide();
+        // Вычисляем базовую точку: верхний угол хитбокса с автоматическим смещением в сторону стены
+        Vector2 autoPoint = new Vector2(bounds.center.x + side * (bounds.extents.x), bounds.max.y);
+        // Прибавляем вручную настраиваемый offset, чтобы можно было корректировать положение
+        return autoPoint + ledgeProbeOffset;
     }
+
 
     private bool IsLedgeDetected()
     {
-        // Используем Bounds хитбокса, чтобы определить его границы
-        Bounds bounds = boxCollider.bounds;
-
-        // Задаём небольшой отступ (margin) за пределы хитбокса. Например, 0.05 единиц.
-        float margin = 0.05f;
-
-        // Вычисляем точку для луча:
-        // Берём центр по X хитбокса плюс смещение по X равное (extents.x + margin) умноженное на сторону стены.
-        // По Y берём верхнюю точку хитбокса.
-        Vector2 probePoint = new Vector2(bounds.center.x + wallContactSide * (bounds.extents.x + margin), bounds.max.y);
-
-        // Отправляем луч вниз на расстояние ledgeRayLength по слою groundLayer
+        Vector2 probePoint = GetLedgeProbePoint();
         RaycastHit2D hit = Physics2D.Raycast(probePoint, Vector2.down, ledgeRayLength, collisionController.groundLayer);
-
-        // Отладочная отрисовка (видна в режиме Play при включенных Gizmos)
         Debug.DrawRay(probePoint, Vector2.down * ledgeRayLength, Color.magenta);
-
-        // Если луч пересекает пол, значит, край обнаружен.
         return (hit.collider != null);
     }
+
 
     private void TryStartLedgeClimb()
     {
