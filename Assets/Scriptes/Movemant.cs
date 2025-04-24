@@ -89,9 +89,8 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // Используем GetAxisRaw для мгновенной реакции без сглаживания.
-        float rawH = Input.GetAxisRaw("Horizontal");
-        hInput = rawH; // Можно оставить для совместимости, если используется в FixedUpdate.
+        // Считываем горизонтальный ввод.
+        hInput = Input.GetAxis("Horizontal");
         timeSinceDetached += Time.deltaTime;
         bool grounded = collisionController.IsGrounded;
         bool touchingWall = collisionController.IsTouchingWall;
@@ -105,9 +104,9 @@ public class PlayerController : MonoBehaviour
             collisionController.currentHitboxState = CollisionController.HitboxState.Normal;
 
         // Поворот персонажа согласно направлению ввода.
-        if (rawH > 0 && !facingRight)
+        if (hInput > 0 && !facingRight)
             Flip();
-        else if (rawH < 0 && facingRight)
+        else if (hInput < 0 && facingRight)
             Flip();
 
         // Если персонаж цепляется за стену, но стена пропадает – прекращаем цепление.
@@ -119,28 +118,24 @@ public class PlayerController : MonoBehaviour
         {
             if (isSlidingOnWall)
             {
-                // Получаем текущую сторону стены (1 если стена справа, -1 если слева).
-                int wallSide = collisionController.GetLastWallContactSide();
-                // Для wall jump требуем, чтобы кнопка движения была зажата именно в противоположную сторону.
-                // Здесь threshold можно увеличить до 0.1f или 0.2f для большей стабильности.
-                if (Mathf.Abs(rawH) >= 0.2f && Mathf.Sign(rawH) == -wallSide)
+                if ((wallContactSide == 1 && facingRight) || (wallContactSide == -1 && !facingRight))
+                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                else
                 {
                     rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
                     StartCoroutine(WallJumpLockCoroutine());
                 }
-                else
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
                 StopWallSlide();
                 timeSinceDetached = 0f;
                 jumpCount = 0;
             }
             else
             {
-                // Обычный прыжок.
-                if (!grounded && Mathf.Abs(rawH) >= 0.2f && rb.linearVelocity.x != 0 &&
-                    (Mathf.Sign(rb.linearVelocity.x) != Mathf.Sign(rawH)))
+                // Если персонаж находится в воздухе и игрок нажимает Jump с направлением, противоположным текущему горизонтальному импульсу,
+                // то производится резкий разворот: горизонтальная скорость устанавливается равной hInput * airMaxSpeed.
+                if (!grounded && Mathf.Abs(hInput) > 0.01f && rb.linearVelocity.x != 0 && (Mathf.Sign(rb.linearVelocity.x) != Mathf.Sign(hInput)))
                 {
-                    rb.linearVelocity = new Vector2(rawH * airMaxSpeed, jumpForce);
+                    rb.linearVelocity = new Vector2(hInput * airMaxSpeed, jumpForce);
                 }
                 else
                 {
@@ -156,10 +151,11 @@ public class PlayerController : MonoBehaviour
             StopWallSlide();
         }
 
+        // --- Цепление за стеной (Wall Hang)
         if (collisionController.IsTouchingWall && !grounded &&
-            timeSinceDetached >= wallDetachCooldown &&
-            Mathf.Abs(rawH) >= 0.2f &&
-            Mathf.Sign(rawH) == collisionController.GetLastWallContactSide())
+            Mathf.Abs(hInput) > 0.01f &&
+            ((facingRight && hInput > 0) || (!facingRight && hInput < 0)) &&
+            timeSinceDetached >= wallDetachCooldown)
         {
             StartWallHang();
         }
@@ -354,11 +350,7 @@ public class PlayerController : MonoBehaviour
         Vector3 s = transform.localScale;
         s.x *= -1;
         transform.localScale = s;
-
-        // Сброс буфера касания стены, чтобы устаревшее состояние не мешало
-        collisionController.ResetWallContactBuffer();
     }
-
 
     // --- Блокировка управления после wall jump.
     private IEnumerator WallJumpLockCoroutine()
