@@ -118,8 +118,7 @@ public class PlayerController : MonoBehaviour
         {
             if (isSlidingOnWall && Mathf.Sign(hInput) == -collisionController.GetLastWallContactSide())
             {
-                {
-                    if ((wallContactSide == 1 && facingRight) || (wallContactSide == -1 && !facingRight))
+                if ((wallContactSide == 1 && facingRight) || (wallContactSide == -1 && !facingRight))
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
                 else
                 {
