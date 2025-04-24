@@ -114,50 +114,44 @@ public class CollisionController : MonoBehaviour
 
     bool CheckFullWallContact()
     {
-        // ¬ычисл€ем мировую позицию с поправкой на modelCenterOffset.
+        // ќпредел€ем небольшое горизонтальное смещение дл€ области проверки.
+        float margin = 0.1f;
+
+        // ¬ычисл€ем мировую позицию центра персонажа с учЄтом modelCenterOffset.
         Vector2 pos = (Vector2)transform.position +
-                      new Vector2(ignoreFlipForWallChecks ?
-                                  modelCenterOffset.x :
-                                  (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
+                      new Vector2(ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
                                   modelCenterOffset.y);
 
-        // ќпредел€ем offset и размер дл€ проверки Ч либо кастомные, либо из BoxCollider2D.
+        // »спользуем либо пользовательские параметры дл€ проверки стены, либо параметры из boxCollider.
         Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : boxCollider.offset;
         Vector2 size = overrideWallCheckCollider ? customWallCheckSize : boxCollider.size;
-        Vector2 halfSize = size * 0.5f;
 
+        // ќпредел€ем направление взгл€да (если персонаж смотрит вправо, то facingRight == true).
         bool facingRight = ignoreFlipForWallChecks ? true : (transform.localScale.x >= 0);
 
-        // ќпредел€ем контрольные точки дл€ лицевой и задней линий хитбокса.
-        Vector2 frontTop, frontBottom, backTop, backBottom;
+        // –ассчитаем центр проверочной области.
+        // ≈сли персонаж смотрит вправо, смещаем область вправо от коллайдера, иначе - влево.
+        Vector2 boxCenter;
         if (facingRight)
         {
-            // Ћицева€ сторона Ц права€.
-            frontTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
-            frontBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
-            backTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
-            backBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
+            // ќт центра персонажа смещаемс€ вправо на половину ширины коллайдера плюс margin.
+            boxCenter = pos + offset + new Vector2(size.x * 0.5f + margin, 0);
         }
         else
         {
-            // Ћицева€ сторона Ц лева€.
-            frontTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
-            frontBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
-            backTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
-            backBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
+            boxCenter = pos + offset - new Vector2(size.x * 0.5f + margin, 0);
         }
 
-        bool frontFull = Physics2D.OverlapPoint(frontTop, wallLayer) && Physics2D.OverlapPoint(frontBottom, wallLayer);
-        bool backFull = Physics2D.OverlapPoint(backTop, wallLayer) && Physics2D.OverlapPoint(backBottom, wallLayer);
+        // –азмер проверочной области:
+        // ѕо горизонтали Ч маленька€ область (например, margin * 2), по вертикали Ч примерно высота коллайдера.
+        Vector2 boxSize = new Vector2(margin * 2f, size.y * 0.95f);
 
-        if (frontFull)
+        // »спользуем OverlapBox дл€ проверки столкновени€.
+        Collider2D hit = Physics2D.OverlapBox(boxCenter, boxSize, 0f, wallLayer);
+        if (hit != null)
         {
+            // ≈сли обнаружено столкновение, фиксируем сторону контакта.
             lastWallContactSide = facingRight ? 1 : -1;
-            return true;
-        }
-        else if (backFull)
-        {
-            lastWallContactSide = facingRight ? -1 : 1;
             return true;
         }
         else
@@ -165,6 +159,7 @@ public class CollisionController : MonoBehaviour
             return false;
         }
     }
+
 
     /// <summary>
     /// ¬озвращает сторону последнего контакта со стеной.
