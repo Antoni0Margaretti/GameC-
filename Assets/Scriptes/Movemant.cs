@@ -157,10 +157,8 @@ public class PlayerController : MonoBehaviour
         if (isSlidingOnWall && !touchingWall)
             StopWallSlide();
 
-        if (!isLedgeClimbing && collisionController.IsTouchingWall)
-        {
-            TryStartLedgeClimb();
-        }
+        // Вызываем попытку начать залезание без дополнительных проверок.
+        TryStartLedgeClimb();
 
         // Отладочная отрисовка вертикального луча:
         Debug.DrawRay(GetLedgeProbePoint(), Vector2.down * ledgeRayLength, Color.magenta);
@@ -525,47 +523,53 @@ public class PlayerController : MonoBehaviour
     // Метод, возвращающий точку, из которой будем запускать вертикальный луч (probePoint)
     private Vector2 GetLedgeProbePoint()
     {
-        Vector2 baseCenter;
-        if (ledgeProbeCenter != null)
-        {
-            baseCenter = ledgeProbeCenter.position;
-        }
-        else
-        {
-            baseCenter = boxCollider.bounds.center;
-        }
+        Vector2 baseCenter = (ledgeProbeCenter != null)
+                             ? ledgeProbeCenter.position
+                             : boxCollider.bounds.center;
 
-        // Получаем сторону контакта (1 если стена справа, -1 если слева)
+        // Определяем направление: используем GetLastWallContactSide(), а если оно 0 – направление взгляда.
         int side = collisionController.GetLastWallContactSide();
-        // Вычисляем итоговую точку: относительно базового центра добавляем смещение.
+        if (side == 0)
+            side = (facingRight ? 1 : -1);
+
+        // Итоговая probe point – базовый центр плюс настраиваемое смещение.
         return baseCenter + new Vector2(side * ledgeProbeHorizontalDistance, ledgeProbeVerticalOffset);
     }
 
-
-    // Проверка наличия пола под точкой (vertical raycast вниз)
+    // Метод, выполняющий вертикальный raycast вниз с probe point.
+    // Условие активации – если луч пересекает коллайдер (хитбокс) пола (groundLayer).
     private bool IsLedgeDetected()
     {
         Vector2 probePoint = GetLedgeProbePoint();
         RaycastHit2D hit = Physics2D.Raycast(probePoint, Vector2.down, ledgeRayLength, collisionController.groundLayer);
+        Debug.DrawRay(probePoint, Vector2.down * ledgeRayLength, Color.magenta); // для отладки
         return (hit.collider != null);
     }
 
+    // Метод запускает залезание, если единственное условие выполнено:
+    // вертикальный луч (наша probe point) пересекает хитбокс/коллайдер пола.
     private void TryStartLedgeClimb()
     {
-        // Если мы прижаты к стене и вертикальный луч пересекает пол,
-        // считаем, что персонаж находится на краю, и запускаем залезание.
-        if (IsLedgeDetected())
+        if (!isLedgeClimbing && IsLedgeDetected())
         {
             isLedgeClimbing = true;
             ledgeClimbStartPos = transform.position;
+
+            // Определяем направление для смещения.
             int side = collisionController.GetLastWallContactSide();
+            if (side == 0)
+                side = (facingRight ? 1 : -1);
+
+            // Целевая позиция вычисляется как текущее положение + горизонтальное и вертикальное смещения.
             ledgeClimbTargetPos = ledgeClimbStartPos + new Vector2(side * ledgeClimbHorizontalOffset, ledgeClimbVerticalDistance);
-            rb.linearVelocity = Vector2.zero;
+
+            rb.velocity = Vector2.zero;
             rb.gravityScale = 0;
             StartCoroutine(LedgeClimbRoutine());
         }
     }
 
+    // Короутина для плавного перемещения персонажа из начальной позиции к целевой.
     private IEnumerator LedgeClimbRoutine()
     {
         float timer = 0f;
