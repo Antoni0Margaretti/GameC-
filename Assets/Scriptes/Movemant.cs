@@ -152,10 +152,13 @@ public class PlayerController : MonoBehaviour
         }
 
         // --- Цепление за стеной (Wall Hang)
-        if (collisionController.IsTouchingWall && !grounded &&
+        if ((collisionController.IsTouchingWall && !grounded &&
             Mathf.Abs(hInput) > 0.01f &&
             ((facingRight && hInput > 0) || (!facingRight && hInput < 0)) &&
-            timeSinceDetached >= wallDetachCooldown)
+            timeSinceDetached >= wallDetachCooldown) || (collisionController.IsTouchingWall && !grounded &&
+            Mathf.Abs(hInput) > 0.01f &&
+            ((facingRight && hInput > 0) || (!facingRight && hInput < 0)) &&
+            timeSinceDetached >= wallDetachCooldown && rb.linearVelocity.y > 0))
         {
             StartWallHang();
         }
