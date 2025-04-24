@@ -89,8 +89,17 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // Считываем горизонтальный ввод.
-        hInput = Input.GetAxis("Horizontal");
+        // Получаем мгновенный ввод с клавиатуры.
+        float rawH = Input.GetAxisRaw("Horizontal");
+        // Устанавливаем порог для определения, что кнопка действительно зажата
+        float threshold = 0.2f;
+        int inputDir = 0;
+        if (rawH >= threshold)
+            inputDir = 1;
+        else if (rawH <= -threshold)
+            inputDir = -1;
+
+        hInput = rawH; // Если требуется для FixedUpdate
         timeSinceDetached += Time.deltaTime;
         bool grounded = collisionController.IsGrounded;
         bool touchingWall = collisionController.IsTouchingWall;
@@ -103,13 +112,13 @@ public class PlayerController : MonoBehaviour
         else
             collisionController.currentHitboxState = CollisionController.HitboxState.Normal;
 
-        // Поворот персонажа согласно направлению ввода.
-        if (hInput > 0 && !facingRight)
+        // Смена направления персонажа (Flip) – используем rawH и порог.
+        if (inputDir > 0 && !facingRight)
             Flip();
-        else if (hInput < 0 && facingRight)
+        else if (inputDir < 0 && facingRight)
             Flip();
 
-        // Если персонаж цепляется за стену, но стена пропадает – прекращаем цепление.
+        // Если персонаж цепляется за стену, но стену больше не касаемся – сбрасываем цепление.
         if (isSlidingOnWall && !touchingWall)
             StopWallSlide();
 
@@ -118,26 +127,30 @@ public class PlayerController : MonoBehaviour
         {
             if (isSlidingOnWall)
             {
-                // Выполняем wall jump только если зажата кнопка движения от стены.
-                // Это условие: Mathf.Sign(hInput) должна быть равна -wallContactSide.
-                if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
+                // Для wall jump: требуется, чтобы игрок зажимал клавишу движения, противоположную стороне стены.
+                // Если сторона стены (возвращается collisionController.GetLastWallContactSide()) равна, например, 1 (стена справа),
+                // то inputDir должен быть -1.
+                if (inputDir != 0 && inputDir == -collisionController.GetLastWallContactSide())
                 {
-                    rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
+                    rb.linearVelocity = new Vector2(-collisionController.GetLastWallContactSide() * wallJumpHorizForce, wallJumpForce);
                     StartCoroutine(WallJumpLockCoroutine());
                 }
                 else
+                {
+                    // Если кнопка движения не нажата или нажата неверно – просто вертикальный прыжок.
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                }
                 StopWallSlide();
                 timeSinceDetached = 0f;
                 jumpCount = 0;
             }
             else
             {
-                // Если персонаж находится в воздухе и игрок нажимает Jump с направлением, противоположным текущему горизонтальному импульсу,
-                // то производится резкий разворот: горизонтальная скорость устанавливается равной hInput * airMaxSpeed.
-                if (!grounded && Mathf.Abs(hInput) > 0.01f && rb.linearVelocity.x != 0 && (Mathf.Sign(rb.linearVelocity.x) != Mathf.Sign(hInput)))
+                // Обычный прыжок: если в воздухе и направление ввода противоположно текущему импульсу, меняем горизонтальную скорость.
+                if (!grounded && Mathf.Abs(rawH) >= threshold && rb.linearVelocity.x != 0 &&
+                    (Mathf.Sign(rb.linearVelocity.x) != Mathf.Sign(rawH)))
                 {
-                    rb.linearVelocity = new Vector2(hInput * airMaxSpeed, jumpForce);
+                    rb.linearVelocity = new Vector2(rawH * airMaxSpeed, jumpForce);
                 }
                 else
                 {
@@ -154,10 +167,13 @@ public class PlayerController : MonoBehaviour
         }
 
         // --- Цепление за стеной (Wall Hang)
+        // Теперь для активации цепления требуется, чтобы:
+        // 1. Персонаж касался стены (IsTouchingWall) и не находился на земле.
+        // 2. Прошло достаточно времени после предыдущего отключения.
+        // 3. Игрок зажимает клавишу движения именно в ту сторону, с которой находится стена.
         if (collisionController.IsTouchingWall && !grounded &&
-            Mathf.Abs(hInput) > 0.01f &&
-            ((facingRight && hInput > 0) || (!facingRight && hInput < 0)) &&
-            timeSinceDetached >= wallDetachCooldown)
+            timeSinceDetached >= wallDetachCooldown &&
+            inputDir == collisionController.GetLastWallContactSide())
         {
             StartWallHang();
         }
@@ -174,8 +190,11 @@ public class PlayerController : MonoBehaviour
         {
             if (isSlidingOnWall)
             {
-                if ((wallContactSide == 1 && !facingRight) || (wallContactSide == -1 && facingRight))
+                if ((collisionController.GetLastWallContactSide() == 1 && !facingRight) ||
+                    (collisionController.GetLastWallContactSide() == -1 && facingRight))
+                {
                     StartCoroutine(Dash());
+                }
             }
             else
             {
@@ -183,12 +202,11 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // Подкат (Slide) и присед (Crouch) – работают только на земле.
         if (grounded)
         {
-            if (Input.GetKeyDown(KeyCode.LeftControl) && Mathf.Abs(hInput) > 0.01f && !isSliding)
-                StartCoroutine(Slide(hInput));
-            else if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.S)) && Mathf.Abs(hInput) < 0.01f)
+            if (Input.GetKeyDown(KeyCode.LeftControl) && Mathf.Abs(rawH) >= threshold && !isSliding)
+                StartCoroutine(Slide(rawH));
+            else if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.S)) && Mathf.Abs(rawH) < threshold)
             {
                 isCrouching = true;
                 rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
@@ -199,7 +217,6 @@ public class PlayerController : MonoBehaviour
         else
             isCrouching = false;
 
-        // Если персонаж в воздухе и удерживается Ctrl – при приземлении запускается подкат.
         if (grounded && Input.GetKey(KeyCode.LeftControl) && Mathf.Abs(rb.linearVelocity.x) > 0.1f && !isSliding && !isCrouching)
             StartCoroutine(Slide(rb.linearVelocity.x));
 
@@ -211,6 +228,7 @@ public class PlayerController : MonoBehaviour
         if (!isSlidingOnWall)
             collisionController.ignoreFlipForWallChecks = false;
     }
+
 
     // Обработка физики в FixedUpdate.
     // Если ввода отсутствует, горизонтальная скорость остаётся неизменной (сохраняется весь импульс).
@@ -352,6 +370,8 @@ public class PlayerController : MonoBehaviour
         Vector3 s = transform.localScale;
         s.x *= -1;
         transform.localScale = s;
+        // Сброс буфера контакта, чтобы старые данные не влияли.
+        collisionController.ResetWallContactBuffer();
     }
 
     // --- Блокировка управления после wall jump.

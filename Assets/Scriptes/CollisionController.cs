@@ -16,22 +16,24 @@ public class CollisionController : MonoBehaviour
     public bool ignoreFlipForWallChecks = false;
 
     [Header("Wall Check Collider Settings (Override)")]
-    // Если true, для проверки цепления за стены используются пользовательские параметры.
+    // Если true, используются кастомные параметры для проверки стены.
     public bool overrideWallCheckCollider = false;
     public Vector2 customWallCheckOffset;
     public Vector2 customWallCheckSize;
 
     [Header("Model Center Adjustment")]
-    // Смещение от точки pivot до визуального центра модели. При повороте оно зеркально отражается.
+    // Смещение от точки pivot до визуального центра модели (при повороте зеркально отражается).
     public Vector2 modelCenterOffset;
 
     [Header("Wall Contact Buffer Settings")]
-    // Буфер времени, в течение которого контакт со стеной считается действующим, даже если текущая проверка не сработала.
+    // Время (сек), в течение которого контакт со стеной считается действующим.
     public float wallContactGracePeriod = 0.15f;
     private float lastWallContactTime = -100f;
+    // Хранит сторону последнего контакта: 1 – если стена справа, -1 – если слева.
+    private int lastWallContactSide = 0;
 
     [Header("Dynamic Hitbox Settings")]
-    // Размеры и смещения хитбокса для различных состояний.
+    // Настраиваемые хитбоксы для различных состояний.
     public Vector2 normalHitboxSize;
     public Vector2 normalHitboxOffset;
     public Vector2 crouchingHitboxSize;
@@ -39,10 +41,10 @@ public class CollisionController : MonoBehaviour
     public Vector2 slidingHitboxSize;
     public Vector2 slidingHitboxOffset;
 
-    // Текущее состояние хитбокса. PlayerController должен обновлять его при смене состояния.
+    // Текущее состояние хитбокса; его нужно менять из PlayerController.
     public HitboxState currentHitboxState = HitboxState.Normal;
 
-    // Свойства для доступа из других компонентов.
+    // Свойства для доступа извне.
     public bool IsGrounded { get; private set; }
     public bool IsTouchingWall { get; private set; }
 
@@ -51,7 +53,8 @@ public class CollisionController : MonoBehaviour
     void Start()
     {
         boxCollider = GetComponent<BoxCollider2D>();
-        // Если динамические хитбоксы не заданы через Inspector, используем данные из компонента.
+
+        // Если динамические хитбоксы не заданы через Inspector, используем параметры BoxCollider2D.
         if (normalHitboxSize == Vector2.zero) normalHitboxSize = boxCollider.size;
         if (normalHitboxOffset == Vector2.zero) normalHitboxOffset = boxCollider.offset;
     }
@@ -63,7 +66,7 @@ public class CollisionController : MonoBehaviour
     }
 
     /// <summary>
-    /// В зависимости от currentHitboxState обновляет размеры и смещение BoxCollider2D.
+    /// Обновляет размеры и смещение BoxCollider2D в зависимости от состояния хитбокса.
     /// </summary>
     void UpdateHitbox()
     {
@@ -85,43 +88,49 @@ public class CollisionController : MonoBehaviour
     }
 
     /// <summary>
-    /// Выполняет проверки: земля (OverlapBox) и стена (с мягким буфером).
+    /// Проверяет столкновение с землёй и со стеной.
     /// </summary>
-    private void CheckCollisions()
+    void CheckCollisions()
     {
-        // Проверка земли.
-        Vector2 groundCheckPos = (Vector2)transform.TransformPoint(groundCheckOffset);
-        IsGrounded = Physics2D.OverlapBox(groundCheckPos, groundCheckSize, 0f, groundLayer);
+        // Земля: используем OverlapBox для проверки.
+        Vector2 groundPos = (Vector2)transform.TransformPoint(groundCheckOffset);
+        IsGrounded = Physics2D.OverlapBox(groundPos, groundCheckSize, 0f, groundLayer);
 
-        // Проверка стены с использованием метода CheckFullWallContact().
+        // Стена: используем метод CheckFullWallContact.
         bool fullContact = CheckFullWallContact();
         if (fullContact)
             lastWallContactTime = Time.time;
-        // Даже если в текущем кадре контакт не найден, если с момента последнего контакта прошло менее wallContactGracePeriod, считаем, что персонаж всё еще касается стены.
+        // Если с момента последнего контакта прошло не более wallContactGracePeriod, считаем, что контакт сохраняется.
         IsTouchingWall = (Time.time - lastWallContactTime) <= wallContactGracePeriod;
     }
 
     /// <summary>
-    /// Проверяет, прилегают ли две вертикальные линии (лицевую и заднюю) хитбокса к стене.
-    /// Использует либо параметры из BoxCollider2D, либо кастомные, если override включен.
+    /// Производит проверку прилегания хитбокса к стене.
+    /// Использует две вертикальные линии (лицевую и заднюю).
+    /// Если обнаружен полный контакт по одной из линий, сохраняет сторону контакта.
     /// </summary>
-    /// <returns>True, если хотя бы одна из линий полностью касается стены.</returns>
-    private bool CheckFullWallContact()
+    /// <returns>True, если контакт обнаружен.</returns>
+    bool CheckFullWallContact()
     {
-        // Расчет позиции с учетом modelCenterOffset. Если персонаж повернут, ось X зеркально отражается.
+        // Вычисляем мировую позицию с поправкой на modelCenterOffset.
         Vector2 pos = (Vector2)transform.position +
-                      new Vector2(ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
+                      new Vector2(ignoreFlipForWallChecks ?
+                                  modelCenterOffset.x :
+                                  (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
                                   modelCenterOffset.y);
-        // Используем параметры хитбокса для проверки стен или кастомные, если разрешено.
+
+        // Определяем offset и размер для проверки — либо кастомные, либо из BoxCollider2D.
         Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : boxCollider.offset;
         Vector2 size = overrideWallCheckCollider ? customWallCheckSize : boxCollider.size;
         Vector2 halfSize = size * 0.5f;
 
         bool facingRight = ignoreFlipForWallChecks ? true : (transform.localScale.x >= 0);
 
+        // Определяем контрольные точки для лицевой и задней линий хитбокса.
         Vector2 frontTop, frontBottom, backTop, backBottom;
         if (facingRight)
         {
+            // Лицевая сторона – правая.
             frontTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
             frontBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
             backTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
@@ -129,51 +138,89 @@ public class CollisionController : MonoBehaviour
         }
         else
         {
+            // Лицевая сторона – левая.
             frontTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
             frontBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
             backTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
             backBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
         }
+
         bool frontFull = Physics2D.OverlapPoint(frontTop, wallLayer) && Physics2D.OverlapPoint(frontBottom, wallLayer);
         bool backFull = Physics2D.OverlapPoint(backTop, wallLayer) && Physics2D.OverlapPoint(backBottom, wallLayer);
-        return frontFull || backFull;
+
+        if (frontFull)
+        {
+            lastWallContactSide = facingRight ? 1 : -1;
+            return true;
+        }
+        else if (backFull)
+        {
+            lastWallContactSide = facingRight ? -1 : 1;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     /// <summary>
-    /// Отрисовывает Gizmos для отладки зон проверки земли и стены.
+    /// Возвращает сторону последнего контакта со стеной.
+    /// 1 – стена справа, -1 – стена слева.
     /// </summary>
+    public int GetLastWallContactSide()
+    {
+        return lastWallContactSide;
+    }
+
+    /// <summary>
+    /// Сбрасывает буфер контакта со стеной.
+    /// </summary>
+    public void ResetWallContactBuffer()
+    {
+        lastWallContactTime = -100f;
+        lastWallContactSide = 0;
+    }
+
+    // Для отладки: отрисовка Gizmos.
     void OnDrawGizmosSelected()
     {
-        // Зона проверки земли.
+        // Зона проверки земли (зелёная рамка).
         Gizmos.color = Color.green;
-        Vector2 groundCheckPos = (Vector2)transform.TransformPoint(groundCheckOffset);
-        Gizmos.DrawWireCube(groundCheckPos, groundCheckSize);
+        Vector2 groundPos = (Vector2)transform.TransformPoint(groundCheckOffset);
+        Gizmos.DrawWireCube(groundPos, groundCheckSize);
 
-        // Отрисовка линий для проверки стены.
+        // Отрисовка линий проверки стены (красные линии).
         Gizmos.color = Color.red;
-        Vector2 pos = (Vector2)transform.position +
-            new Vector2(ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
-                        modelCenterOffset.y);
-        Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : boxCollider.offset;
-        Vector2 size = overrideWallCheckCollider ? customWallCheckSize : boxCollider.size;
-        Vector2 halfSize = size * 0.5f;
-        bool facingRight = ignoreFlipForWallChecks ? true : (transform.localScale.x >= 0);
-        Vector2 frontTop, frontBottom, backTop, backBottom;
-        if (facingRight)
+        if (boxCollider != null)
         {
-            frontTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
-            frontBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
-            backTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
-            backBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
+            Vector2 pos = (Vector2)transform.position +
+                          new Vector2(ignoreFlipForWallChecks ?
+                                      modelCenterOffset.x :
+                                      (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
+                                      modelCenterOffset.y);
+            Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : boxCollider.offset;
+            Vector2 size = overrideWallCheckCollider ? customWallCheckSize : boxCollider.size;
+            Vector2 halfSize = size * 0.5f;
+            bool facingRight = ignoreFlipForWallChecks ? true : (transform.localScale.x >= 0);
+
+            Vector2 frontTop, frontBottom, backTop, backBottom;
+            if (facingRight)
+            {
+                frontTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
+                frontBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
+                backTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
+                backBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
+            }
+            else
+            {
+                frontTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
+                frontBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
+                backTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
+                backBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
+            }
+            Gizmos.DrawLine(frontTop, frontBottom);
+            Gizmos.DrawLine(backTop, backBottom);
         }
-        else
-        {
-            frontTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
-            frontBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
-            backTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
-            backBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
-        }
-        Gizmos.DrawLine(frontTop, frontBottom);
-        Gizmos.DrawLine(backTop, backBottom);
     }
 }
