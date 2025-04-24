@@ -92,24 +92,26 @@ public class CollisionController : MonoBehaviour
     /// </summary>
     void CheckCollisions()
     {
-        // «емл€: используем OverlapBox дл€ проверки.
+        // ѕроверка земли.
         Vector2 groundPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         IsGrounded = Physics2D.OverlapBox(groundPos, groundCheckSize, 0f, groundLayer);
 
-        // —тена: используем метод CheckFullWallContact.
+        // ѕроверка стены.
         bool fullContact = CheckFullWallContact();
-        if (fullContact)
+
+        // ≈сли ранее не касались стены, а сейчас обнаружен контакт Ц обновл€ем врем€.
+        // ≈сли контакт был в предыдущем кадре, оставл€ем lastWallContactTime без изменений.
+        // Ёто позвол€ет, когда контакт тер€етс€, использовать величину grace period.
+        if (fullContact && !IsTouchingWall)
+        {
             lastWallContactTime = Time.time;
-        // ≈сли с момента последнего контакта прошло не более wallContactGracePeriod, считаем, что контакт сохран€етс€.
-        IsTouchingWall = (Time.time - lastWallContactTime) <= wallContactGracePeriod;
+        }
+
+        // ≈сли контакт обнаруживаетс€ пр€мо сейчас, то IsTouchingWall будет истинным.
+        // ≈сли контакт потер€н, но не прошло больше wallContactGracePeriod секунд Ц остаЄтс€ true.
+        IsTouchingWall = fullContact || ((Time.time - lastWallContactTime) <= wallContactGracePeriod);
     }
 
-    /// <summary>
-    /// ѕроизводит проверку прилегани€ хитбокса к стене.
-    /// »спользует две вертикальные линии (лицевую и заднюю).
-    /// ≈сли обнаружен полный контакт по одной из линий, сохран€ет сторону контакта.
-    /// </summary>
-    /// <returns>True, если контакт обнаружен.</returns>
     bool CheckFullWallContact()
     {
         // ¬ычисл€ем мировую позицию с поправкой на modelCenterOffset.
