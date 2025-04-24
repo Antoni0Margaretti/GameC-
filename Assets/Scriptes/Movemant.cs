@@ -100,6 +100,8 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        Debug.DrawRay(ledgeRayOrigin.position, Vector2.down * ledgeRayLength, Color.yellow);
+
         float rawH = Input.GetAxisRaw("Horizontal");
         float threshold = 0.2f;
         int inputDir = 0;
