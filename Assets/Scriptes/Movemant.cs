@@ -354,20 +354,20 @@ public class PlayerController : MonoBehaviour
             {
                 // Останавливаем авто-подъём и переводим персонажа в режим висения.
                 autoClimbing = false;
-                rb.velocity = new Vector2(rb.velocity.x, 0f);
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
                 // Можно сразу вызвать корутину перехода в режим висения:
                 StartCoroutine(WallHangCoroutine());
                 yield break; // Выходим из корутины, так как контакт потерян.
             }
 
             // Если контакт сохранён — продолжаем подъем с заданной скоростью
-            rb.velocity = new Vector2(rb.velocity.x, wallAutoClimbSpeed);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, wallAutoClimbSpeed);
             yield return null;
         }
 
         // По окончании подъёма (либо дистанция достигнута) выключаем авто-подъём
         autoClimbing = false;
-        rb.velocity = new Vector2(rb.velocity.x, 0f);
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
         // После завершения авто-подъёма запускаем переход в режим висения (если ещё не вызван)
         StartCoroutine(WallHangCoroutine());
     }
