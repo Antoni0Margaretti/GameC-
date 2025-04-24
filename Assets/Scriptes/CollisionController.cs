@@ -29,6 +29,8 @@ public class CollisionController : MonoBehaviour
     // Буфер времени, в течение которого контакт со стеной считается действующим, даже если текущая проверка не сработала.
     public float wallContactGracePeriod = 0.15f;
     private float lastWallContactTime = -100f;
+    // Храним сторону последнего обнаруженного контакта: 1 – контакт с правой стороны, -1 – с левой.
+    private int lastWallContactSide = 0;
 
     [Header("Dynamic Hitbox Settings")]
     // Размеры и смещения хитбокса для различных состояний.
@@ -175,5 +177,9 @@ public class CollisionController : MonoBehaviour
         }
         Gizmos.DrawLine(frontTop, frontBottom);
         Gizmos.DrawLine(backTop, backBottom);
+    }
+    public int GetLastWallContactSide()
+    {
+        return lastWallContactSide;
     }
 }

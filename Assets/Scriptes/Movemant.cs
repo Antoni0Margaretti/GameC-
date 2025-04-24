@@ -116,9 +116,10 @@ public class PlayerController : MonoBehaviour
         // --- Прыжок
         if (Input.GetButtonDown("Jump") && (grounded || jumpCount < maxJumps || isSlidingOnWall))
         {
-            if (isSlidingOnWall)
+            if (isSlidingOnWall && Mathf.Sign(hInput) == -collisionController.GetLastWallContactSide())
             {
-                if ((wallContactSide == 1 && facingRight) || (wallContactSide == -1 && !facingRight))
+                {
+                    if ((wallContactSide == 1 && facingRight) || (wallContactSide == -1 && !facingRight))
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
                 else
                 {
