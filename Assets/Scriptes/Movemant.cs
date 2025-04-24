@@ -116,11 +116,15 @@ public class PlayerController : MonoBehaviour
         // --- Прыжок
         if (Input.GetButtonDown("Jump") && (grounded || jumpCount < maxJumps || isSlidingOnWall))
         {
-            if (isSlidingOnWall && Mathf.Sign(hInput) == -collisionController.GetLastWallContactSide())
+            if (isSlidingOnWall)
             {
-                // Отталкивание от стены.
-                rb.linearVelocity = new Vector2(-collisionController.GetLastWallContactSide() * wallJumpHorizForce, wallJumpForce);
-                StartCoroutine(WallJumpLockCoroutine());
+                if ((wallContactSide == 1 && facingRight) || (wallContactSide == -1 && !facingRight))
+                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                else
+                {
+                    rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
+                    StartCoroutine(WallJumpLockCoroutine());
+                }
                 StopWallSlide();
                 timeSinceDetached = 0f;
                 jumpCount = 0;
