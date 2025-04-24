@@ -440,7 +440,7 @@ public class PlayerController : MonoBehaviour
     {
         if (ledgeRayOrigin == null) return;
         RaycastHit2D hit = Physics2D.Raycast(ledgeRayOrigin.position, Vector2.down, ledgeRayLength, collisionController.groundLayer);
-        if (hit.collider == null && collisionController.IsTouchingWall())
+        if (hit.collider == null && collisionController.IsTouchingWall)
         {
             if (!isLedgeClimbing)
             {
