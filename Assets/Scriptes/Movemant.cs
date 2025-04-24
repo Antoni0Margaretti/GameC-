@@ -344,21 +344,34 @@ public class PlayerController : MonoBehaviour
     }
 
 
-    // Короутина автоматического подъёма:
     private IEnumerator AutoClimbCoroutine()
     {
-        // Пока персонаж не поднялся на wallAutoClimbDistance от начальной позиции:
+        // Цикл выполняется, пока авто-подъём активен и пока не достигнута заданная дистанция подъёма.
         while (autoClimbing && transform.position.y < wallClimbStartY + wallAutoClimbDistance)
         {
-            // Устанавливаем постоянную скорость подъёма.
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, wallAutoClimbSpeed);
+            // Если персонаж перестаёт полностью прилегать к стене...
+            if (!collisionController.IsTouchingWall)
+            {
+                // Останавливаем авто-подъём и переводим персонажа в режим висения.
+                autoClimbing = false;
+                rb.velocity = new Vector2(rb.velocity.x, 0f);
+                // Можно сразу вызвать корутину перехода в режим висения:
+                StartCoroutine(WallHangCoroutine());
+                yield break; // Выходим из корутины, так как контакт потерян.
+            }
+
+            // Если контакт сохранён — продолжаем подъем с заданной скоростью
+            rb.velocity = new Vector2(rb.velocity.x, wallAutoClimbSpeed);
             yield return null;
         }
-        // Как только дистанция достигнута – выключаем режим авто-подъёма
+
+        // По окончании подъёма (либо дистанция достигнута) выключаем авто-подъём
         autoClimbing = false;
-        // Сбрасываем вертикальную скорость, чтобы персонаж перешёл в режим висения.
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
+        rb.velocity = new Vector2(rb.velocity.x, 0f);
+        // После завершения авто-подъёма запускаем переход в режим висения (если ещё не вызван)
+        StartCoroutine(WallHangCoroutine());
     }
+
 
     // Короутина, которая ждёт завершения авто-подъёма, а затем запускает стандартный таймер висения:
     private IEnumerator WaitForAutoClimbThenWallHang()
