@@ -106,22 +106,20 @@ public class CollisionController : MonoBehaviour
             lastWallContactTime = Time.time;
         }
 
-        // ≈сли контакт обнаружен, »ли недавно потер€н (в пределах grace period),
+        // ≈сли контакт обнаружен, или недавно потер€н (в пределах grace period),
         // считаем, что персонаж всЄ ещЄ цепл€етс€.
         IsTouchingWall = fullContact || ((Time.time - lastWallContactTime) <= wallContactGracePeriod);
     }
-
 
     bool CheckFullWallContact()
     {
         // ¬ычисл€ем мировую позицию с поправкой на modelCenterOffset.
         Vector2 pos = (Vector2)transform.position +
-                      new Vector2(ignoreFlipForWallChecks ?
-                                  modelCenterOffset.x :
-                                  (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
-                                  modelCenterOffset.y);
+                      new Vector2(
+                          ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
+                          modelCenterOffset.y);
 
-        // ќпредел€ем offset и размер дл€ проверки Ч либо кастомные, либо из BoxCollider2D.
+        // ќпредел€ем offset и размер дл€ проверки Ц либо кастомные, либо из BoxCollider2D.
         Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : boxCollider.offset;
         Vector2 size = overrideWallCheckCollider ? customWallCheckSize : boxCollider.size;
         Vector2 halfSize = size * 0.5f;
@@ -132,7 +130,6 @@ public class CollisionController : MonoBehaviour
         Vector2 frontTop, frontBottom, backTop, backBottom;
         if (facingRight)
         {
-            // Ћицева€ сторона Ц права€.
             frontTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
             frontBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
             backTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
@@ -140,7 +137,6 @@ public class CollisionController : MonoBehaviour
         }
         else
         {
-            // Ћицева€ сторона Ц лева€.
             frontTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
             frontBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
             backTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
@@ -167,8 +163,7 @@ public class CollisionController : MonoBehaviour
     }
 
     /// <summary>
-    /// ¬озвращает сторону последнего контакта со стеной.
-    /// 1 Ц стена справа, -1 Ц стена слева.
+    /// ¬озвращает сторону последнего контакта со стеной: 1 Ц если стена справа, -1 Ц если слева.
     /// </summary>
     public int GetLastWallContactSide()
     {
@@ -184,28 +179,25 @@ public class CollisionController : MonoBehaviour
         lastWallContactSide = 0;
     }
 
-    // ƒл€ отладки: отрисовка Gizmos.
     void OnDrawGizmosSelected()
     {
-        // «она проверки земли (зелЄна€ рамка).
+        // ќтрисовка зоны проверки земли.
         Gizmos.color = Color.green;
         Vector2 groundPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         Gizmos.DrawWireCube(groundPos, groundCheckSize);
 
-        // ќтрисовка линий проверки стены (красные линии).
+        // ќтрисовка линии проверки стены.
         Gizmos.color = Color.red;
         if (boxCollider != null)
         {
             Vector2 pos = (Vector2)transform.position +
-                          new Vector2(ignoreFlipForWallChecks ?
-                                      modelCenterOffset.x :
-                                      (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
-                                      modelCenterOffset.y);
+                          new Vector2(
+                              ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
+                              modelCenterOffset.y);
             Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : boxCollider.offset;
             Vector2 size = overrideWallCheckCollider ? customWallCheckSize : boxCollider.size;
             Vector2 halfSize = size * 0.5f;
             bool facingRight = ignoreFlipForWallChecks ? true : (transform.localScale.x >= 0);
-
             Vector2 frontTop, frontBottom, backTop, backBottom;
             if (facingRight)
             {
