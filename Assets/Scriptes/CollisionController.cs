@@ -96,62 +96,68 @@ public class CollisionController : MonoBehaviour
         Vector2 groundPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         IsGrounded = Physics2D.OverlapBox(groundPos, groundCheckSize, 0f, groundLayer);
 
-        // Проверка стены.
+        // Проверка стены: вычисляем, обнаружен ли контакт.
         bool fullContact = CheckFullWallContact();
 
-        // Если ранее не касались стены, а сейчас обнаружен контакт – обновляем время.
-        // Если контакт был в предыдущем кадре, оставляем lastWallContactTime без изменений.
-        // Это позволяет, когда контакт теряется, использовать величину grace period.
+        // Если в этом кадре контакт обнаружен, но в предыдущем кадре его не было,
+        // обновляем время контакта.
         if (fullContact && !IsTouchingWall)
         {
             lastWallContactTime = Time.time;
         }
 
-        // Если контакт обнаруживается прямо сейчас, то IsTouchingWall будет истинным.
-        // Если контакт потерян, но не прошло больше wallContactGracePeriod секунд – остаётся true.
+        // Если контакт обнаружен, Или недавно потерян (в пределах grace period),
+        // считаем, что персонаж всё ещё цепляется.
         IsTouchingWall = fullContact || ((Time.time - lastWallContactTime) <= wallContactGracePeriod);
     }
 
+
     bool CheckFullWallContact()
     {
-        // Определяем небольшое горизонтальное смещение для области проверки.
-        float margin = 0.1f;
-
-        // Вычисляем мировую позицию центра персонажа с учётом modelCenterOffset.
+        // Вычисляем мировую позицию с поправкой на modelCenterOffset.
         Vector2 pos = (Vector2)transform.position +
-                      new Vector2(ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
+                      new Vector2(ignoreFlipForWallChecks ?
+                                  modelCenterOffset.x :
+                                  (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
                                   modelCenterOffset.y);
 
-        // Используем либо пользовательские параметры для проверки стены, либо параметры из boxCollider.
+        // Определяем offset и размер для проверки — либо кастомные, либо из BoxCollider2D.
         Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : boxCollider.offset;
         Vector2 size = overrideWallCheckCollider ? customWallCheckSize : boxCollider.size;
+        Vector2 halfSize = size * 0.5f;
 
-        // Определяем направление взгляда (если персонаж смотрит вправо, то facingRight == true).
         bool facingRight = ignoreFlipForWallChecks ? true : (transform.localScale.x >= 0);
 
-        // Рассчитаем центр проверочной области.
-        // Если персонаж смотрит вправо, смещаем область вправо от коллайдера, иначе - влево.
-        Vector2 boxCenter;
+        // Определяем контрольные точки для лицевой и задней линий хитбокса.
+        Vector2 frontTop, frontBottom, backTop, backBottom;
         if (facingRight)
         {
-            // От центра персонажа смещаемся вправо на половину ширины коллайдера плюс margin.
-            boxCenter = pos + offset + new Vector2(size.x * 0.5f + margin, 0);
+            // Лицевая сторона – правая.
+            frontTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
+            frontBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
+            backTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
+            backBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
         }
         else
         {
-            boxCenter = pos + offset - new Vector2(size.x * 0.5f + margin, 0);
+            // Лицевая сторона – левая.
+            frontTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
+            frontBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
+            backTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
+            backBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
         }
 
-        // Размер проверочной области:
-        // По горизонтали — маленькая область (например, margin * 2), по вертикали — примерно высота коллайдера.
-        Vector2 boxSize = new Vector2(margin * 2f, size.y * 0.95f);
+        bool frontFull = Physics2D.OverlapPoint(frontTop, wallLayer) && Physics2D.OverlapPoint(frontBottom, wallLayer);
+        bool backFull = Physics2D.OverlapPoint(backTop, wallLayer) && Physics2D.OverlapPoint(backBottom, wallLayer);
 
-        // Используем OverlapBox для проверки столкновения.
-        Collider2D hit = Physics2D.OverlapBox(boxCenter, boxSize, 0f, wallLayer);
-        if (hit != null)
+        if (frontFull)
         {
-            // Если обнаружено столкновение, фиксируем сторону контакта.
             lastWallContactSide = facingRight ? 1 : -1;
+            return true;
+        }
+        else if (backFull)
+        {
+            lastWallContactSide = facingRight ? -1 : 1;
             return true;
         }
         else
@@ -159,7 +165,6 @@ public class CollisionController : MonoBehaviour
             return false;
         }
     }
-
 
     /// <summary>
     /// Возвращает сторону последнего контакта со стеной.
