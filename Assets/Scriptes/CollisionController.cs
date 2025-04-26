@@ -32,88 +32,64 @@ public class CollisionController : MonoBehaviour
     // Хранит сторону последнего контакта: 1 – если стена справа, -1 – если слева.
     private int lastWallContactSide = 0;
 
-    [Header("Dynamic Hitbox Settings")]
-    // Настраиваемые хитбоксы для различных состояний.
-    public Vector2 normalHitboxSize;
-    public Vector2 normalHitboxOffset;
-    public Vector2 crouchingHitboxSize;
-    public Vector2 crouchingHitboxOffset;
-    public Vector2 slidingHitboxSize;
-    public Vector2 slidingHitboxOffset;
+    // Старую логику динамических хитбоксов мы убираем.
+    // Поля, связанные с normalHitboxSize, crouchingHitboxSize, slidingHitboxSize, 
+    // а также метод UpdateHitbox() – больше не нужны.
 
-    // Текущее состояние хитбокса; его нужно менять из PlayerController.
+    // Текущее состояние хитбокса (оставляем, если оно используется в логике, например,
+    // для любых анимационных состояний, но обновление Hitbox будет производить другой скрипт).
     public HitboxState currentHitboxState = HitboxState.Normal;
 
-    // Свойства для доступа извне.
+    // Свойства для доступа: которые нужны для проверки столкновений.
     public bool IsGrounded { get; private set; }
     public bool IsTouchingWall { get; private set; }
 
+    // Ссылка для расчётов используется BoxCollider2D, настроенный в редакторе.
+    // Если вы используете динамический хитбокс через DynamicSpriteCollider, то у вас может быть
+    // PolygonCollider2D вместо BoxCollider2D, но для проверки (например, OverlapBox) можно оставить
+    // BoxCollider2D или задать отдельные параметры.
     private BoxCollider2D boxCollider;
 
     void Start()
     {
+        // Получаем BoxCollider2D только для расчётов методами проверки столкновений.
         boxCollider = GetComponent<BoxCollider2D>();
-
-        // Если динамические хитбоксы не заданы через Inspector, используем параметры BoxCollider2D.
-        if (normalHitboxSize == Vector2.zero) normalHitboxSize = boxCollider.size;
-        if (normalHitboxOffset == Vector2.zero) normalHitboxOffset = boxCollider.offset;
     }
 
     void Update()
     {
-        UpdateHitbox();
+        // Обновляем чаще только проверки столкновений.
         CheckCollisions();
     }
 
     /// <summary>
-    /// Обновляет размеры и смещение BoxCollider2D в зависимости от состояния хитбокса.
-    /// </summary>
-    void UpdateHitbox()
-    {
-        switch (currentHitboxState)
-        {
-            case HitboxState.Normal:
-                boxCollider.size = normalHitboxSize;
-                boxCollider.offset = normalHitboxOffset;
-                break;
-            case HitboxState.Crouching:
-                boxCollider.size = crouchingHitboxSize;
-                boxCollider.offset = crouchingHitboxOffset;
-                break;
-            case HitboxState.Sliding:
-                boxCollider.size = slidingHitboxSize;
-                boxCollider.offset = slidingHitboxOffset;
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Проверяет столкновение с землёй и со стеной.
+    /// Проверяет столкновения с землёй и стеной.
     /// </summary>
     void CheckCollisions()
     {
-        // Проверка земли.
+        // Проверка земли: рассчитываем мировую позицию точки проверки, используя groundCheckOffset.
         Vector2 groundPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         IsGrounded = Physics2D.OverlapBox(groundPos, groundCheckSize, 0f, groundLayer);
 
-        // Проверка стены: вычисляем, обнаружен ли контакт.
+        // Проверка стены: используем метод CheckFullWallContact().
         bool fullContact = CheckFullWallContact();
 
-        // Если в этом кадре контакт обнаружен, но в предыдущем кадре его не было,
-        // обновляем время контакта.
+        // Если в этом кадре контакт обнаружен, фиксируем время контакта.
         if (fullContact && !IsTouchingWall)
         {
             lastWallContactTime = Time.time;
         }
 
-        // Если контакт обнаружен, или недавно потерян (в пределах grace period),
-        // считаем, что персонаж всё ещё цепляется.
+        // Если контакт обнаружён или недавно (в течение wallContactGracePeriod) был – считаем, что стена касается.
         IsTouchingWall = fullContact || ((Time.time - lastWallContactTime) <= wallContactGracePeriod);
     }
 
+    /// <summary>
+    /// Выполняет проверку контакта со стеной, вычисляя контрольные точки по бокам хитбокса.
+    /// </summary>
     bool CheckFullWallContact()
     {
-        // Вычисляем мировую позицию с поправкой на modelCenterOffset.
+        // Вычисляем мировую позицию с учётом modelCenterOffset.
         Vector2 pos = (Vector2)transform.position +
                       new Vector2(
                           ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
@@ -126,7 +102,7 @@ public class CollisionController : MonoBehaviour
 
         bool facingRight = ignoreFlipForWallChecks ? true : (transform.localScale.x >= 0);
 
-        // Определяем контрольные точки для лицевой и задней линий хитбокса.
+        // Вычисляем контрольные точки для лицевой и задней сторон хитбокса.
         Vector2 frontTop, frontBottom, backTop, backBottom;
         if (facingRight)
         {
@@ -181,12 +157,12 @@ public class CollisionController : MonoBehaviour
 
     void OnDrawGizmosSelected()
     {
-        // Отрисовка зоны проверки земли.
+        // Отрисовываем зону проверки земли.
         Gizmos.color = Color.green;
         Vector2 groundPos = (Vector2)transform.TransformPoint(groundCheckOffset);
         Gizmos.DrawWireCube(groundPos, groundCheckSize);
 
-        // Отрисовка линии проверки стены.
+        // Отрисовываем линию проверки стены.
         Gizmos.color = Color.red;
         if (boxCollider != null)
         {
@@ -217,12 +193,14 @@ public class CollisionController : MonoBehaviour
             Gizmos.DrawLine(backTop, backBottom);
         }
     }
+
+    /// <summary>
+    /// Проверяет, есть ли пол под заданным объектом (например, при проверке выступа).
+    /// </summary>
     public bool IsLedgeClear(Transform ledgeOrigin, float rayLength)
     {
-        // Если raycast вниз с ledgeOrigin не находит коллайдер в слое groundLayer,
-        // то под этой точкой нет пола.
         RaycastHit2D hit = Physics2D.Raycast(ledgeOrigin.position, Vector2.down, rayLength, groundLayer);
-        Debug.DrawRay(ledgeOrigin.position, Vector2.down * rayLength, Color.yellow); // отладка
+        Debug.DrawRay(ledgeOrigin.position, Vector2.down * rayLength, Color.yellow);
         return (hit.collider == null);
     }
 }
