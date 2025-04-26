@@ -120,7 +120,6 @@ public class PlayerController : MonoBehaviour
     public Transform ledgeProbeCenter;
     // Новые параметры для настройки положения probe point относительно центра.
     public float ledgeProbeHorizontalDistance = 0.3f; // Расстояние от центра до probe point по X.
-    public float ledgeProbeVerticalOffset = 0f;       // Смещение по Y от центра (например, если центр берется не в верхней части).
 
 
 
@@ -611,7 +610,7 @@ public class PlayerController : MonoBehaviour
                 float usedVerticalDistance = (ledgeType == LedgeType.Upper) ? ledgeClimbVerticalDistanceUpper : ledgeClimbVerticalDistanceLower;
 
                 ledgeClimbTargetPos = ledgeClimbStartPos + new Vector2(side * ledgeClimbHorizontalOffset, usedVerticalDistance);
-                rb.velocity = Vector2.zero;
+                rb.linearVelocity = Vector2.zero;
                 rb.gravityScale = 0;
                 StartCoroutine(LedgeClimbRoutine());
             }
