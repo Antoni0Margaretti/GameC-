@@ -91,9 +91,16 @@ public class PlayerController : MonoBehaviour
 
     // Параметры, определяющие работу механики:
     public float ledgeRayLength = 0.1f;             // Длина вертикального луча, проверяющего наличие пола за краем
-    public float ledgeClimbVerticalDistance = 0.6f; // На сколько единиц поднимается персонаж при залезании
+    // Два разных вертикальных расстояния подъёма
+    public float ledgeClimbVerticalDistanceLower = 0.6f;
+    public float ledgeClimbVerticalDistanceUpper = 1.0f; // На сколько единиц поднимается персонаж при залезании
     public float ledgeClimbHorizontalOffset = 0.3f;   // Горизонтальное смещение (выход на платформу)
     public float ledgeClimbDuration = 0.4f;         // Время, за которое происходит залезание
+
+    // Отдельные вертикальные смещения для нижнего и верхнего луча
+    public float ledgeProbeVerticalOffsetLower = 0f;
+    public float ledgeProbeVerticalOffsetUpper = 0.2f;
+
 
     // Локальные переменные для состояния залезания
     private bool isLedgeClimbing = false;
@@ -160,8 +167,9 @@ public class PlayerController : MonoBehaviour
         // Вызываем попытку начать залезание без дополнительных проверок.
         TryStartLedgeClimb();
 
-        // Отладочная отрисовка вертикального луча:
-        Debug.DrawRay(GetLedgeProbePoint(), Vector2.down * ledgeRayLength, Color.magenta);
+        // Для отладки: отрисовка лучей
+        Debug.DrawRay(GetLedgeProbePointForLower(), Vector2.down * ledgeRayLength, Color.green);
+        Debug.DrawRay(GetLedgeProbePointForUpper(), Vector2.down * ledgeRayLength, Color.blue);
 
         // --- Прыжок
         if (Input.GetButtonDown("Jump") && (grounded || jumpCount < maxJumps || isSlidingOnWall))
@@ -520,55 +528,85 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Метод, возвращающий точку, из которой будем запускать вертикальный луч (probePoint)
-    private Vector2 GetLedgeProbePoint()
+    // Метод возвращает базовый центр для вычисления probe point
+    private Vector2 GetBaseCenter()
     {
-        Vector2 baseCenter = (ledgeProbeCenter != null)
-                             ? ledgeProbeCenter.position
-                             : boxCollider.bounds.center;
+        return (ledgeProbeCenter != null) ? ledgeProbeCenter.position : boxCollider.bounds.center;
+    }
 
-        // Определяем направление: используем GetLastWallContactSide(), а если оно 0 – направление взгляда.
+    // Метод для вычисления probe point для нижнего луча
+    private Vector2 GetLedgeProbePointForLower()
+    {
+        Vector2 baseCenter = GetBaseCenter();
         int side = collisionController.GetLastWallContactSide();
         if (side == 0)
             side = (facingRight ? 1 : -1);
-
-        // Итоговая probe point – базовый центр плюс настраиваемое смещение.
-        return baseCenter + new Vector2(side * ledgeProbeHorizontalDistance, ledgeProbeVerticalOffset);
+        return baseCenter + new Vector2(side * ledgeProbeHorizontalDistance, ledgeProbeVerticalOffsetLower);
     }
 
-    // Метод, выполняющий вертикальный raycast вниз с probe point.
-    // Условие активации – если луч пересекает коллайдер (хитбокс) пола (groundLayer).
-    private bool IsLedgeDetected()
+    // Метод для вычисления probe point для верхнего луча
+    private Vector2 GetLedgeProbePointForUpper()
     {
-        Vector2 probePoint = GetLedgeProbePoint();
-        RaycastHit2D hit = Physics2D.Raycast(probePoint, Vector2.down, ledgeRayLength, collisionController.groundLayer);
-        Debug.DrawRay(probePoint, Vector2.down * ledgeRayLength, Color.magenta); // для отладки
-        return (hit.collider != null);
+        Vector2 baseCenter = GetBaseCenter();
+        int side = collisionController.GetLastWallContactSide();
+        if (side == 0)
+            side = (facingRight ? 1 : -1);
+        return baseCenter + new Vector2(side * ledgeProbeHorizontalDistance, ledgeProbeVerticalOffsetUpper);
     }
 
-    // Метод запускает залезание, если единственное условие выполнено:
-    // вертикальный луч (наша probe point) пересекает хитбокс/коллайдер пола.
+    // Определяем, какая часть (нижняя или верхняя) обнаружила хитбокс пола.
+    private enum LedgeType { None, Lower, Upper }
+
+    private LedgeType GetLedgeType()
+    {
+        Vector2 lowerProbe = GetLedgeProbePointForLower();
+        Vector2 upperProbe = GetLedgeProbePointForUpper();
+
+        RaycastHit2D hitLower = Physics2D.Raycast(lowerProbe, Vector2.down, ledgeRayLength, collisionController.groundLayer);
+        RaycastHit2D hitUpper = Physics2D.Raycast(upperProbe, Vector2.down, ledgeRayLength, collisionController.groundLayer);
+
+        // Для отладки уже рисуем лучи в Update
+        bool lowerDetected = (hitLower.collider != null);
+        bool upperDetected = (hitUpper.collider != null);
+
+        // Если обнаружено только нижним лучом, считаем, что у нас "нижнее" состояние
+        if (lowerDetected && !upperDetected)
+            return LedgeType.Lower;
+        // Если обнаружено только верхним лучом, то "верхнее" состояние
+        else if (!lowerDetected && upperDetected)
+            return LedgeType.Upper;
+        // Если оба срабатывают, можно выбрать приоритет (например, нижнее)
+        else if (lowerDetected && upperDetected)
+            return LedgeType.Lower;
+        else
+            return LedgeType.None;
+    }
+
+    // Метод запуска залезания; единственное условие – если один из лучей обнаружил хитбокс пола.
     private void TryStartLedgeClimb()
     {
-        if (!isLedgeClimbing && IsLedgeDetected())
+        if (!isLedgeClimbing)
         {
-            isLedgeClimbing = true;
-            ledgeClimbStartPos = transform.position;
+            LedgeType ledgeType = GetLedgeType();
+            if (ledgeType != LedgeType.None)
+            {
+                isLedgeClimbing = true;
+                ledgeClimbStartPos = transform.position;
 
-            // Определяем направление для смещения.
-            int side = collisionController.GetLastWallContactSide();
-            if (side == 0)
-                side = (facingRight ? 1 : -1);
+                int side = collisionController.GetLastWallContactSide();
+                if (side == 0)
+                    side = (facingRight ? 1 : -1);
 
-            // Целевая позиция вычисляется как текущее положение + горизонтальное и вертикальное смещения.
-            ledgeClimbTargetPos = ledgeClimbStartPos + new Vector2(side * ledgeClimbHorizontalOffset, ledgeClimbVerticalDistance);
+                // Выбираем вертикальное расстояние в зависимости от типа детекции
+                float usedVerticalDistance = (ledgeType == LedgeType.Upper) ? ledgeClimbVerticalDistanceUpper : ledgeClimbVerticalDistanceLower;
 
-            rb.velocity = Vector2.zero;
-            rb.gravityScale = 0;
-            StartCoroutine(LedgeClimbRoutine());
+                ledgeClimbTargetPos = ledgeClimbStartPos + new Vector2(side * ledgeClimbHorizontalOffset, usedVerticalDistance);
+                rb.velocity = Vector2.zero;
+                rb.gravityScale = 0;
+                StartCoroutine(LedgeClimbRoutine());
+            }
         }
     }
-
     // Короутина для плавного перемещения персонажа из начальной позиции к целевой.
     private IEnumerator LedgeClimbRoutine()
     {
@@ -584,7 +622,6 @@ public class PlayerController : MonoBehaviour
         isLedgeClimbing = false;
         rb.gravityScale = defaultGravityScale;
     }
-
 
     // --- Изменение направления (Flip)
     private void Flip()
