@@ -16,6 +16,8 @@ public class DynamicSpriteCollider : MonoBehaviour
     void Awake()
     {
         // Инициализируем ссылки на компоненты.
+        Rigidbody2D rb = GetComponent<Rigidbody2D>();
+        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         polyCollider = GetComponent<PolygonCollider2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
     }
