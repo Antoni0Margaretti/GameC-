@@ -570,6 +570,7 @@ GameObject:
   - component: {fileID: 806581130}
   - component: {fileID: 806581134}
   - component: {fileID: 806581135}
+  - component: {fileID: 806581136}
   m_Layer: 0
   m_Name: pixil-frame-0_0
   m_TagString: Untagged
@@ -1026,6 +1027,31 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9e5694445bc628e4bb9b313624c05390, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &806581136
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 806581123}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4034dd77eb1abd7479f62ac84c26f8e4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxCombo: 3
+  comboResetTime: 1
+  comboAttackHitboxes: []
+  parryDuration: 0.5
+  parryCooldown: 1
+  parryHitbox: {fileID: 0}
+  dashAttackHitbox: {fileID: 0}
+  dashDamageDuration: 0.3
+  isCrouching: 0
+  isSliding: 0
+  isDashing: 0
+  isLedgeClimbing: 0
+  isWallAttached: 0
 --- !u!1 &823114274
 GameObject:
   m_ObjectHideFlags: 0
