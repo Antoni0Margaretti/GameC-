@@ -142,13 +142,6 @@ public class PlayerController : MonoBehaviour
         //    Die();
         //}
 
-        // Если игра на паузе, разрешаем обрабатывать только клавишу Esc,
-        // а весь остальной ввод игнорируем.
-        if (Time.timeScale == 0)
-        {
-            return;
-        }
-
         // Используем GetAxisRaw для мгновенного ввода по горизонтали.
         float rawH = Input.GetAxisRaw("Horizontal");
         float threshold = 0.2f;
