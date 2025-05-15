@@ -4,28 +4,39 @@ using System.Collections;
 
 public class MusicManager : MonoBehaviour
 {
-    // Singleton-экземпляр, чтобы этот объект не уничтожался при загрузке новых сцен.
+    // Singleton – чтобы MusicManager сохранялся между сценами
     public static MusicManager Instance { get; private set; }
 
-    [Header("Music Clips")]
-    [Tooltip("Музыкальный трек главного меню.")]
-    public AudioClip mainMenuMusic;
-    [Tooltip("Музыкальный трек для игровых уровней.")]
-    public AudioClip levelMusic;
+    [Header("Menu Tracks")]
+    [Tooltip("Массив треков для главного меню, которые будут проигрываться циклически.")]
+    public AudioClip[] menuTracks;
 
-    [Header("Settings")]
+    [Header("Level Tracks")]
+    [Tooltip("Массив треков для игровых уровней, которые будут проигрываться циклически.")]
+    public AudioClip[] levelTracks;
+
+    [Header("Volume & Transition")]
     [Tooltip("Нормальная громкость музыки.")]
     public float normalVolume = 1f;
     [Tooltip("Громкость музыки в режиме паузы.")]
     public float pausedVolume = 0.2f;
-    [Tooltip("Время на плавное увеличение/уменьшение громкости.")]
+    [Tooltip("Время для плавного перехода между треками или смены музыки (fade duration).")]
     public float fadeDuration = 0.5f;
 
+    // Вспомогательные переменные
     private AudioSource audioSource;
+    // Текущий набор треков (из menuTracks или levelTracks)
+    private AudioClip[] currentTrackList;
+    // Текущий индекс в массиве треков
+    private int currentTrackIndex = 0;
+    // Ссылка на корутину циклического проигрывания
+    private Coroutine cycleCoroutine = null;
+    // Флаг, указывающий на то, что музыка в режиме паузы – используется для регулирования громкости
+    private bool isPaused = false;
 
     void Awake()
     {
-        // Реализуем паттерн Singleton.
+        // Реализация Singleton
         if (Instance == null)
         {
             Instance = this;
@@ -37,16 +48,23 @@ public class MusicManager : MonoBehaviour
             return;
         }
 
+        // Получаем AudioSource, либо добавляем его, если его ещё нет
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null)
-        {
             audioSource = gameObject.AddComponent<AudioSource>();
-        }
-        audioSource.loop = true;
+
+        // В режиме циклического проигрывания трек не должен зацикливаться самим клипом
+        audioSource.loop = false;
         audioSource.volume = normalVolume;
 
         // Подписываемся на событие загрузки новой сцены
         SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    void Start()
+    {
+        // При запуске выбираем нужный набор треков по имени текущей сцены
+        SetMusicForScene(SceneManager.GetActiveScene());
     }
 
     void OnDestroy()
@@ -54,68 +72,125 @@ public class MusicManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
-    void Start()
-    {
-        // При запуске игры выбираем трек для текущей сцены.
-        SetMusicForScene(SceneManager.GetActiveScene());
-    }
-
-    // При загрузке новой сцены вызывается эта функция
+    // Событие загрузки новой сцены
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         SetMusicForScene(scene);
     }
 
-    // Выбираем трек в зависимости от имени загруженной сцены.
-    // Предполагается, что сцена главного меню называется "MainMenu".
+    /// <summary>
+    /// Выбираем набор треков в зависимости от сцены.
+    /// Если сцена называется "MainMenu", используется меню, иначе – музыка уровня.
+    /// При смене набора треков происходит плавный переход.
+    /// </summary>
     void SetMusicForScene(Scene scene)
     {
-        AudioClip clipToPlay = (scene.name == "MainMenu") ? mainMenuMusic : levelMusic;
-        if (audioSource.clip != clipToPlay)
+        AudioClip[] newTrackList = (scene.name == "MainMenu") ? menuTracks : levelTracks;
+
+        // Если новый набор отличается от текущего, либо если список пуст или текущая музыка не входит в него – начинаем новый цикл
+        if (newTrackList == null || newTrackList.Length == 0)
         {
-            // Производим плавное переключение музыки.
-            StartCoroutine(SwitchMusic(clipToPlay));
+            Debug.LogWarning("Track list is empty for scene: " + scene.name);
+            return;
+        }
+
+        // Если текущTrackList отличается или если текущая музыка не содердается
+        if (currentTrackList != newTrackList || audioSource.clip == null || System.Array.IndexOf(newTrackList, audioSource.clip) == -1)
+        {
+            // Останавливаем предыдущий цикл, если он есть
+            if (cycleCoroutine != null)
+                StopCoroutine(cycleCoroutine);
+
+            currentTrackList = newTrackList;
+            currentTrackIndex = 0;
+            // Плавно переключаем музыку на первый трек нового набора
+            StartCoroutine(SwitchMusic(currentTrackList[currentTrackIndex]));
+            // Запускаем цикл проигрывания треков
+            cycleCoroutine = StartCoroutine(CycleMusicCoroutine());
         }
     }
 
-    // Плавное переключение музыки с fade-out старого трека и fade-in нового.
+    /// <summary>
+    /// Циклическое проигрывание треков из currentTrackList.
+    /// После окончания текущего трека запускается плавный переход к следующему.
+    /// </summary>
+    IEnumerator CycleMusicCoroutine()
+    {
+        while (true)
+        {
+            if (audioSource.clip != null)
+            {
+                // Ждём, пока оставшееся время трека станет меньше fadeDuration
+                float timeToWait = audioSource.clip.length - audioSource.time - fadeDuration;
+                if (timeToWait > 0)
+                    yield return new WaitForSeconds(timeToWait);
+                else
+                    yield return null;
+
+                // Переходим к следующему треку в списке по циклу
+                currentTrackIndex = (currentTrackIndex + 1) % currentTrackList.Length;
+                yield return StartCoroutine(SwitchMusic(currentTrackList[currentTrackIndex]));
+            }
+            else
+            {
+                yield return null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Плавное переключение на новый трек с использованием fade-out и fade-in.
+    /// </summary>
     IEnumerator SwitchMusic(AudioClip newClip)
     {
+        // Сохраняем текущую громкость
         float startVolume = audioSource.volume;
-        float t = 0f;
-        // Плавное затухание (fade-out)
-        while (t < fadeDuration)
+        float timer = 0f;
+
+        // Плавное затухание текущего трека
+        while (timer < fadeDuration)
         {
-            t += Time.unscaledDeltaTime;
-            audioSource.volume = Mathf.Lerp(startVolume, 0f, t / fadeDuration);
+            timer += Time.unscaledDeltaTime;
+            audioSource.volume = Mathf.Lerp(startVolume, 0f, timer / fadeDuration);
             yield return null;
         }
         audioSource.Stop();
         audioSource.clip = newClip;
         audioSource.Play();
-        t = 0f;
-        // Плавное увеличение громкости (fade-in)
-        while (t < fadeDuration)
+        // Если музыка сейчас не в режиме паузы, то восстанавливаем нормальную громкость, иначе – оставляем pausedVolume
+        float targetVol = isPaused ? pausedVolume : normalVolume;
+        timer = 0f;
+        while (timer < fadeDuration)
         {
-            t += Time.unscaledDeltaTime;
-            audioSource.volume = Mathf.Lerp(0f, normalVolume, t / fadeDuration);
+            timer += Time.unscaledDeltaTime;
+            audioSource.volume = Mathf.Lerp(0f, targetVol, timer / fadeDuration);
             yield return null;
         }
-        audioSource.volume = normalVolume;
+        audioSource.volume = targetVol;
     }
 
     /// <summary>
-    /// Вызывайте этот метод из других скриптов (например, при открытии/закрытии меню паузы),
-    /// чтобы изменить громкость музыки.
+    /// Вызывается извне для установки режима паузы.
+    /// При этом громкость музыки плавно уменьшается или увеличивается.
     /// </summary>
-    /// <param name="paused">Если true – игра на паузе, звук приглушается.</param>
+    /// <param name="paused">Если true – игра на паузе.</param>
     public void SetPaused(bool paused)
     {
-        StopAllCoroutines(); // Прерываем любые текущие изменения громкости, чтобы избежать конфликтов.
+        isPaused = paused;
+        if (cycleCoroutine != null)
+            StopCoroutine(cycleCoroutine);
+        StopAllCoroutines(); // Прерываем текущие фейды, чтобы не было конфликтов.
         StartCoroutine(FadeVolume(paused ? pausedVolume : normalVolume, fadeDuration));
+        // После изменения громкости можно перезапустить цикл, если нужно.
+        if (currentTrackList != null && currentTrackList.Length > 0)
+        {
+            cycleCoroutine = StartCoroutine(CycleMusicCoroutine());
+        }
     }
 
-    // Плавное изменение громкости до targetVolume за время duration.
+    /// <summary>
+    /// Плавное изменение громкости AudioSource до targetVolume за время duration.
+    /// </summary>
     IEnumerator FadeVolume(float targetVolume, float duration)
     {
         float startVolume = audioSource.volume;
