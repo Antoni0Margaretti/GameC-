@@ -121,7 +121,7 @@ public class PlayerController : MonoBehaviour
     // Новые параметры для настройки положения probe point относительно центра.
     public float ledgeProbeHorizontalDistance = 0.3f; // Расстояние от центра до probe point по X.
 
-
+    public bool isAlive = true;
 
     void Start()
     {
@@ -136,6 +136,12 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        // Если игрок мёртв, вызываем метод Die
+        if (!isAlive)
+        {
+            Die();
+        }
+
         // Используем GetAxisRaw для мгновенного ввода по горизонтали.
         float rawH = Input.GetAxisRaw("Horizontal");
         float threshold = 0.2f;
@@ -469,6 +475,8 @@ public class PlayerController : MonoBehaviour
     // --- Рывок (Dash) – одинаковое поведение на земле и в воздухе.
     private IEnumerator Dash()
     {
+        // При начале рывка:
+        gameObject.tag = "Invulnerable";
         isDashing = true;
         canDash = false;
 
@@ -501,6 +509,9 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSeconds(dashCooldown);
         canDash = true;
         isInvulnerable = false;
+
+        // После завершения рывка:
+        gameObject.tag = "Player";
     }
 
 
@@ -650,5 +661,13 @@ public class PlayerController : MonoBehaviour
         isWallJumping = true;
         yield return new WaitForSeconds(wallJumpLockDuration);
         isWallJumping = false;
+    }
+    public void Die()
+    {
+        // Здесь можно реализовать логику смерти: проиграть анимацию, остановить движение,
+        // перезагрузить сцену или отобразить Game Over
+        Debug.Log("Игрок погиб!");
+        // Например, перезагрузим текущую сцену:
+        // SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 }
