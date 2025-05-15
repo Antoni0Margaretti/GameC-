@@ -136,10 +136,17 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // Если игрок мёртв, вызываем метод Die
-        if (!isAlive)
+        //// Если игрок мёртв, вызываем метод Die
+        //if (!isAlive)
+        //{
+        //    Die();
+        //}
+
+        // Если игра на паузе, разрешаем обрабатывать только клавишу Esc,
+        // а весь остальной ввод игнорируем.
+        if (Time.timeScale == 0 && !Input.GetKeyDown(KeyCode.Escape))
         {
-            Die();
+            return;
         }
 
         // Используем GetAxisRaw для мгновенного ввода по горизонтали.
