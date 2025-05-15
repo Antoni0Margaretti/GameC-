@@ -78,11 +78,9 @@ public class MusicManager : MonoBehaviour
         SetMusicForScene(scene);
     }
 
-    /// <summary>
     /// Выбираем набор треков в зависимости от сцены.
     /// Если сцена называется "MainMenu", используется меню, иначе – музыка уровня.
     /// При смене набора треков происходит плавный переход.
-    /// </summary>
     void SetMusicForScene(Scene scene)
     {
         AudioClip[] newTrackList = (scene.name == "MainMenu") ? menuTracks : levelTracks;
@@ -110,10 +108,9 @@ public class MusicManager : MonoBehaviour
         }
     }
 
-    /// <summary>
     /// Циклическое проигрывание треков из currentTrackList.
     /// После окончания текущего трека запускается плавный переход к следующему.
-    /// </summary>
+
     IEnumerator CycleMusicCoroutine()
     {
         while (true)
@@ -138,9 +135,8 @@ public class MusicManager : MonoBehaviour
         }
     }
 
-    /// <summary>
     /// Плавное переключение на новый трек с использованием fade-out и fade-in.
-    /// </summary>
+
     IEnumerator SwitchMusic(AudioClip newClip)
     {
         // Сохраняем текущую громкость
@@ -169,10 +165,8 @@ public class MusicManager : MonoBehaviour
         audioSource.volume = targetVol;
     }
 
-    /// <summary>
     /// Вызывается извне для установки режима паузы.
     /// При этом громкость музыки плавно уменьшается или увеличивается.
-    /// </summary>
     /// <param name="paused">Если true – игра на паузе.</param>
     public void SetPaused(bool paused)
     {
@@ -188,9 +182,8 @@ public class MusicManager : MonoBehaviour
         }
     }
 
-    /// <summary>
     /// Плавное изменение громкости AudioSource до targetVolume за время duration.
-    /// </summary>
+
     IEnumerator FadeVolume(float targetVolume, float duration)
     {
         float startVolume = audioSource.volume;

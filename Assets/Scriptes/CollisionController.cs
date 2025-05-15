@@ -62,9 +62,8 @@ public class CollisionController : MonoBehaviour
         CheckCollisions();
     }
 
-    /// <summary>
     /// Проверяет столкновения с землёй и стеной.
-    /// </summary>
+
     void CheckCollisions()
     {
         // Проверка земли: рассчитываем мировую позицию точки проверки, используя groundCheckOffset.
@@ -84,9 +83,8 @@ public class CollisionController : MonoBehaviour
         IsTouchingWall = fullContact || ((Time.time - lastWallContactTime) <= wallContactGracePeriod);
     }
 
-    /// <summary>
     /// Выполняет проверку контакта со стеной, вычисляя контрольные точки по бокам хитбокса.
-    /// </summary>
+
     bool CheckFullWallContact()
     {
         // Вычисляем мировую позицию с учётом modelCenterOffset.
@@ -138,17 +136,16 @@ public class CollisionController : MonoBehaviour
         }
     }
 
-    /// <summary>
     /// Возвращает сторону последнего контакта со стеной: 1 – если стена справа, -1 – если слева.
-    /// </summary>
+
     public int GetLastWallContactSide()
     {
         return lastWallContactSide;
     }
 
-    /// <summary>
+
     /// Сбрасывает буфер контакта со стеной.
-    /// </summary>
+
     public void ResetWallContactBuffer()
     {
         lastWallContactTime = -100f;
@@ -194,9 +191,7 @@ public class CollisionController : MonoBehaviour
         }
     }
 
-    /// <summary>
     /// Проверяет, есть ли пол под заданным объектом (например, при проверке выступа).
-    /// </summary>
     public bool IsLedgeClear(Transform ledgeOrigin, float rayLength)
     {
         RaycastHit2D hit = Physics2D.Raycast(ledgeOrigin.position, Vector2.down, rayLength, groundLayer);

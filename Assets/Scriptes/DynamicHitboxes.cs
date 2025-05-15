@@ -37,10 +37,8 @@ public class DynamicSpriteCollider : MonoBehaviour
         }
     }
 
-    /// <summary>
     /// ќбновл€ет форму PolygonCollider2D на основе физической формы текущего спрайта.
     /// ‘орма берЄтс€ из настроек спрайта, заданных в Sprite Editor (Custom Physics Shape).
-    /// </summary>
     public void UpdateCollider()
     {
         // ≈сли спрайт не назначен, ничего не делаем.
