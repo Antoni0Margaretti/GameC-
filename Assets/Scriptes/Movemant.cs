@@ -144,7 +144,7 @@ public class PlayerController : MonoBehaviour
 
         // Если игра на паузе, разрешаем обрабатывать только клавишу Esc,
         // а весь остальной ввод игнорируем.
-        if (Time.timeScale == 0 && !Input.GetKeyDown(KeyCode.Escape))
+        if (Time.timeScale == 0)
         {
             return;
         }
