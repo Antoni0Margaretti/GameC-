@@ -265,6 +265,10 @@ public class MeleeEnemyAI : MonoBehaviour
         if ((currentState == State.Dashing && dashAttackHitbox != null && collision.CompareTag("Player")) ||
             (currentState == State.MeleeComboAttacking && IsComboHitbox(collision)))
         {
+            var playerController = collision.GetComponent<PlayerController>();
+            if (playerController != null && playerController.isInvulnerable)
+                return; // Игнорируем урон, если игрок неуязвим
+
             PlayerDeath playerDeath = collision.GetComponent<PlayerDeath>();
             if (playerDeath != null)
                 playerDeath.Die();

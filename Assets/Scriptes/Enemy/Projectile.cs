@@ -95,6 +95,9 @@ public class Projectile : MonoBehaviour
         {
             if (other.CompareTag("Player"))
             {
+                var playerController = other.GetComponent<PlayerController>();
+                if (playerController != null && playerController.isInvulnerable)
+                    return; // »гнорируем попадание, если игрок неу€звим
                 PlayerDeath playerDeath = other.GetComponent<PlayerDeath>();
                 if (playerDeath != null)
                     playerDeath.Die();
