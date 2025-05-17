@@ -9,7 +9,7 @@ public class PauseMenuController : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (Input.GetKeyDown(KeyBindings.Pause))
         {
             if (!isPaused)
                 PauseGame();

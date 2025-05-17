@@ -8,9 +8,8 @@ public class EscapeKeyBinder : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (Input.GetKeyDown(KeyBindings.Pause))
         {
-            // Вызываем onClick у кнопки, что эквивалентно её нажатию
             if (backButton != null)
             {
                 backButton.onClick.Invoke();

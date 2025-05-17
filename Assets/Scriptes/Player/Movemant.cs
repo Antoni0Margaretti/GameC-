@@ -272,7 +272,7 @@ public class PlayerController : MonoBehaviour
                 }
             }
         }
-        if (Input.GetKeyDown(KeyCode.S) && isSlidingOnWall)
+        if (Input.GetKeyDown(KeyBindings.Crouch) && isSlidingOnWall)
             StopWallSlide();
         if (isSlidingOnWall && wallSlideActive && touchingWall)
         {
@@ -281,7 +281,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // --- Остальные механики (Dash, Slide, Crouch)
-        if (Input.GetKeyDown(KeyCode.LeftShift) && canDash && !isSliding && !isCrouching)
+        if (Input.GetKeyDown(KeyBindings.Dash) && canDash && !isSliding && !isCrouching)
         {
             if (isSlidingOnWall)
             {
@@ -297,14 +297,14 @@ public class PlayerController : MonoBehaviour
 
         if (grounded)
         {
-            if (Input.GetKeyDown(KeyCode.LeftControl) && Mathf.Abs(rawH) >= threshold && !isSliding)
+            if (Input.GetKeyDown(KeyBindings.Slide) && Mathf.Abs(rawH) >= threshold && !isSliding)
                 StartCoroutine(Slide(rawH));
-            else if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.S)) && Mathf.Abs(rawH) < threshold)
+            else if ((Input.GetKey(KeyBindings.Slide) || Input.GetKey(KeyBindings.Crouch)) && Mathf.Abs(rawH) < threshold)
             {
                 isCrouching = true;
                 rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
             }
-            else if (!Input.GetKey(KeyCode.LeftControl) && !Input.GetKey(KeyCode.S))
+            else if (!Input.GetKey(KeyBindings.Slide) && !Input.GetKey(KeyBindings.Crouch))
                 isCrouching = false;
         }
         else
@@ -312,8 +312,9 @@ public class PlayerController : MonoBehaviour
             isCrouching = false;
         }
 
-        if (grounded && Input.GetKey(KeyCode.LeftControl) && Mathf.Abs(rb.linearVelocity.x) > 0.1f && !isSliding && !isCrouching)
+        if (grounded && Input.GetKey(KeyBindings.Slide) && Mathf.Abs(rb.linearVelocity.x) > 0.1f && !isSliding && !isCrouching)
             StartCoroutine(Slide(rb.linearVelocity.x));
+
 
         if (!isSliding && !isCrouching)
         {

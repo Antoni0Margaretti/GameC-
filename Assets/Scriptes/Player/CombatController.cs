@@ -66,7 +66,7 @@ public class CombatController : MonoBehaviour
 
     void HandleAttackInput()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetKeyDown(KeyBindings.Attack))
         {
             if (isCrouching || isSliding || isDashing || isLedgeClimbing)
                 return;
@@ -147,7 +147,7 @@ public class CombatController : MonoBehaviour
 
     void HandleParryInput()
     {
-        if (Input.GetMouseButtonDown(1))
+        if (Input.GetKeyDown(KeyBindings.Parry))
         {
             if (isDashing || isLedgeClimbing)
                 return;
@@ -198,7 +198,7 @@ public class CombatController : MonoBehaviour
 
     void HandleDashAttackDamageInput()
     {
-        if (Input.GetKeyDown(KeyCode.E))
+        if (Input.GetKeyDown(KeyBindings.Dash)) // Dash и DashAttack Ч одна кнопка
         {
             if (isParrying)
             {
