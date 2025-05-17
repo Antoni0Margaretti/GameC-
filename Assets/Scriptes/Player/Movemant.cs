@@ -25,7 +25,7 @@ public class PlayerController : MonoBehaviour
     public float dashSpeed = 20f;           // Скорость рывка (задаётся независимо).
     public float dashCooldown = 1f;
     private bool canDash = true;
-    private bool isInvulnerable = false;
+    public bool isInvulnerable = false;
     private bool isDashing = false;         // Блокирует управление во время рывка.
     public float dashAfterLockDuration = 0.2f;
     private bool isDashLocked = false;
@@ -484,7 +484,7 @@ public class PlayerController : MonoBehaviour
     private IEnumerator Dash()
     {
         // При начале рывка:
-        gameObject.tag = "Invulnerable";
+        isInvulnerable = true;
         isDashing = true;
         canDash = false;
 
@@ -517,9 +517,6 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSeconds(dashCooldown);
         canDash = true;
         isInvulnerable = false;
-
-        // После завершения рывка:
-        gameObject.tag = "Player";
     }
 
 
