@@ -32,6 +32,7 @@ public class CombatController : MonoBehaviour
     public bool isLedgeClimbing;
     public bool isWallAttached;
 
+    public bool IsAttacking => isAttacking;
     public bool IsParrying => isParrying;
 
     void Start()
@@ -68,11 +69,16 @@ public class CombatController : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyBindings.Attack))
         {
+            // Нельзя атаковать в присяде, подкате, рывке
             if (isCrouching || isSliding || isDashing || isLedgeClimbing)
                 return;
 
-            if (isWallAttached)
+            // Если висим на стене или лезем по краю — отцепляемся и атакуем
+            if (isLedgeClimbing || isWallAttached)
+            {
                 DetachFromWall();
+                // Сбросить флаг isWallAttached, чтобы Movemant.cs знал, что нужно отцепиться
+            }
 
             if (!isAttacking && !isParrying && !isDashAttacking)
                 StartCoroutine(PerformAttackCombo());
@@ -149,11 +155,16 @@ public class CombatController : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyBindings.Parry))
         {
-            if (isDashing || isLedgeClimbing)
+            // Нельзя парировать во время взбирания на край
+            if (isLedgeClimbing || isDashing)
                 return;
 
+            // Если висим на стене — отцепляемся и парируем
             if (isWallAttached)
+            {
                 DetachFromWall();
+                // Сбросить флаг isWallAttached, чтобы Movemant.cs знал, что нужно отцепиться
+            }
 
             if (!isParrying && !isAttacking && !isDashAttacking && parryCooldownTimer <= 0f)
                 StartCoroutine(PerformParry());

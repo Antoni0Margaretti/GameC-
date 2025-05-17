@@ -121,10 +121,12 @@ public class PlayerController : MonoBehaviour
     // Новые параметры для настройки положения probe point относительно центра.
     public float ledgeProbeHorizontalDistance = 0.3f; // Расстояние от центра до probe point по X.
 
+    private CombatController combatController;
     public bool isAlive = true;
 
     void Start()
     {
+        combatController = GetComponent<CombatController>();
         rb = GetComponent<Rigidbody2D>();
         collisionController = GetComponent<CollisionController>();
         boxCollider = GetComponent<BoxCollider2D>();
@@ -136,6 +138,18 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        // Получаем ссылку на CombatController (можно кэшировать в Start)
+        if (combatController == null)
+            combatController = GetComponent<CombatController>();
+
+        // Если сейчас парирование или атака — не позволяем цепляться за стену
+        if (combatController != null && (combatController.IsParrying || combatController.IsAttacking))
+        {
+            if (isSlidingOnWall)
+                StopWallSlide();
+            if (isLedgeClimbing)
+                StopLedgeClimb();
+        }
         //// Если игрок мёртв, вызываем метод Die
         //if (!isAlive)
         //{
@@ -645,6 +659,20 @@ public class PlayerController : MonoBehaviour
             yield return null;
         }
         transform.position = ledgeClimbTargetPos;
+        isLedgeClimbing = false;
+        rb.gravityScale = defaultGravityScale;
+    }
+
+    public void ForceDetachFromWall()
+    {
+        if (isSlidingOnWall)
+            StopWallSlide();
+        if (isLedgeClimbing)
+            StopLedgeClimb();
+    }
+
+    private void StopLedgeClimb()
+    {
         isLedgeClimbing = false;
         rb.gravityScale = defaultGravityScale;
     }
