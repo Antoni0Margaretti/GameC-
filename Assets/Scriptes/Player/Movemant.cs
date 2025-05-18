@@ -51,6 +51,9 @@ public class PlayerController : MonoBehaviour
     private bool wallSlideActive = false;     // false – режим «висения», true – режим ускоренного скольжения.
     public float wallDetachCooldown = 0.3f;     // Минимальное время между цеплениями.
     private float timeSinceDetached = 0f;
+    [Header("Wall Slide Deceleration")]
+    public float wallGrabDecel = 30f; // ускорение замедления при хвате стены (ед/сек^2)
+
     // Сторона стены, к которой цепляемся: 1 – если справа; -1 – если слева.
     private int wallContactSide = 0;
 
@@ -385,33 +388,38 @@ public class PlayerController : MonoBehaviour
             isSlidingOnWall = true;
             wallSlideActive = false;
 
-            // Сначала запоминаем вертикальную скорость персонажа при зацеплении
+            // Сохраняем вертикальную скорость при зацеплении
             initialGrabVerticalSpeed = rb.linearVelocity.y;
 
-            // Теперь обнуляем скорость и отключаем гравитацию для режима цепления.
-            rb.linearVelocity = Vector2.zero;
+            // Отключаем гравитацию для режима цепления
             rb.gravityScale = 0;
             jumpCount = 0;
 
-            // Сохраняем сторону контакта со стеной, полученную из CollisionController.
+            // Сохраняем сторону контакта со стеной
             wallContactSide = collisionController.GetLastWallContactSide();
 
-            // Если персонаж летел вверх в момент зацепления (вертикальная скорость была положительной),
-            // запускаем автоматический подъём.
             if (initialGrabVerticalSpeed > 0)
             {
+                // Автоматический подъём (как было)
                 wallClimbStartY = transform.position.y;
                 autoClimbing = true;
                 StartCoroutine(AutoClimbCoroutine());
                 StartCoroutine(WaitForAutoClimbThenWallHang());
             }
+            else if (initialGrabVerticalSpeed < 0)
+            {
+                // Новый алгоритм: плавное замедление вниз
+                StartCoroutine(WallGrabDecelerateCoroutine(initialGrabVerticalSpeed));
+            }
             else
             {
-                // Иначе запускаем стандартный таймер висения/скольжения.
+                // Если скорость нулевая — сразу висим
+                rb.linearVelocity = Vector2.zero;
                 StartCoroutine(WallHangCoroutine());
             }
         }
     }
+
 
     // Короутина автоматического подъёма (Auto Climb)
     private IEnumerator AutoClimbCoroutine()
@@ -676,6 +684,28 @@ public class PlayerController : MonoBehaviour
         isLedgeClimbing = false;
         rb.gravityScale = defaultGravityScale;
     }
+
+    private IEnumerator WallGrabDecelerateCoroutine(float startSpeed)
+    {
+        float v = startSpeed;
+        // Пока не остановились (v < 0)
+        while (v < 0)
+        {
+            float decel = wallGrabDecel * Time.deltaTime;
+            v = Mathf.Min(v + decel, 0f); // замедляем к 0
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, v);
+
+            // Если потеряли контакт со стеной — выходим
+            if (!collisionController.IsTouchingWall)
+                yield break;
+
+            yield return null;
+        }
+        rb.linearVelocity = Vector2.zero;
+        // После остановки — стандартный таймер висения
+        StartCoroutine(WallHangCoroutine());
+    }
+
 
     // --- Изменение направления (Flip)
     private void Flip()
