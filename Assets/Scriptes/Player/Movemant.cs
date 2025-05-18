@@ -70,6 +70,11 @@ public class PlayerController : MonoBehaviour
     private bool autoClimbing = false;
     private float wallClimbStartY = 0f;
 
+    [Header("Step Over Settings")]
+    public float stepCheckDistance = 0.2f; // Дистанция проверки перед персонажем
+    public float stepHeight = 0.3f;        // Максимальная высота "ступеньки"
+    public float stepUpSpeed = 10f;        // Скорость подъёма на ступеньку
+
     // --- Гравитация
     public float defaultGravityScale;
     private float originalGravityScale;
@@ -151,6 +156,8 @@ public class PlayerController : MonoBehaviour
         RestoreColliderSize();
         if (!isSlidingOnWall)
             collisionController.ignoreFlipForWallChecks = false;
+        HandleStepOver();
+
     }
 
     void FixedUpdate()
@@ -615,6 +622,36 @@ public class PlayerController : MonoBehaviour
         isLedgeClimbing = false;
         rb.gravityScale = defaultGravityScale;
     }
+
+    private void HandleStepOver()
+    {
+        if (!collisionController.IsGrounded || isSliding || isCrouching || isDashing)
+            return;
+
+        // Определяем направление движения
+        int moveDir = hInput > 0.1f ? 1 : hInput < -0.1f ? -1 : 0;
+        if (moveDir == 0) return;
+
+        // Точка для нижнего луча (на уровне ног)
+        Vector2 origin = (Vector2)transform.position + Vector2.up * 0.05f;
+        Vector2 dir = Vector2.right * moveDir;
+
+        // Проверяем, есть ли препятствие на уровне ног
+        RaycastHit2D hitLow = Physics2D.Raycast(origin, dir, stepCheckDistance, collisionController.groundLayer);
+        if (hitLow.collider == null) return;
+
+        // Точка для верхнего луча (на высоте ступеньки)
+        Vector2 stepOrigin = origin + Vector2.up * stepHeight;
+        RaycastHit2D hitHigh = Physics2D.Raycast(stepOrigin, dir, stepCheckDistance, collisionController.groundLayer);
+
+        // Если сверху свободно — поднимаем персонажа
+        if (hitHigh.collider == null)
+        {
+            // Плавно поднимаем персонажа на высоту ступеньки
+            transform.position += Vector3.up * stepUpSpeed * Time.deltaTime;
+        }
+    }
+
 
     private void Flip()
     {

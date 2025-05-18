@@ -32,10 +32,6 @@ public class CollisionController : MonoBehaviour
     // Хранит сторону последнего контакта: 1 – если стена справа, -1 – если слева.
     private int lastWallContactSide = 0;
 
-    // Старую логику динамических хитбоксов мы убираем.
-    // Поля, связанные с normalHitboxSize, crouchingHitboxSize, slidingHitboxSize, 
-    // а также метод UpdateHitbox() – больше не нужны.
-
     // Текущее состояние хитбокса (оставляем, если оно используется в логике, например,
     // для любых анимационных состояний, но обновление Hitbox будет производить другой скрипт).
     public HitboxState currentHitboxState = HitboxState.Normal;
