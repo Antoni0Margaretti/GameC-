@@ -138,14 +138,43 @@ public class PlayerController : MonoBehaviour
         UpdateFacing();
         UpdateWallDetach();
         TryStartLedgeClimb();
+
+        // --- Отрисовка отладочных лучей ---
         DrawLedgeDebug();
+        DrawWallContactDebug();
 
         HandleJump();
         HandleWallHangAndSlide();
         HandleDash();
         HandleSlideAndCrouch();
         RestoreColliderSize();
-        collisionController.ignoreFlipForWallChecks = !isSlidingOnWall ? false : collisionController.ignoreFlipForWallChecks;
+        if (!isSlidingOnWall)
+            collisionController.ignoreFlipForWallChecks = false;
+    }
+
+    private void DrawLedgeDebug()
+    {
+        Debug.DrawRay(GetLedgeProbePointForLower(), Vector2.down * ledgeRayLengthLower, Color.green);
+        Debug.DrawRay(GetLedgeProbePointForUpper(), Vector2.down * ledgeRayLengthUpper, Color.blue);
+    }
+
+    private void DrawWallContactDebug()
+    {
+        if (boxCollider == null) return;
+
+        Vector2 pos = (Vector2)transform.position;
+        Vector2 offset = boxCollider.offset;
+        Vector2 size = boxCollider.size;
+        Vector2 halfSize = size * 0.5f;
+
+        // Левая и правая стороны хитбокса
+        Vector2 leftTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
+        Vector2 leftBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
+        Vector2 rightTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
+        Vector2 rightBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
+
+        Debug.DrawLine(leftTop, leftBottom, Color.red);    // Левая стенка
+        Debug.DrawLine(rightTop, rightBottom, Color.red);  // Правая стенка
     }
 
     void FixedUpdate()
