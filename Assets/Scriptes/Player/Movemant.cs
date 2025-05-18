@@ -54,6 +54,9 @@ public class PlayerController : MonoBehaviour
     private bool wallSlideActive = false;
     public float wallDetachCooldown = 0.3f;
     private float timeSinceDetached = 0f;
+    [Header("Wall Jump (Auto Climb Boost)")]
+    public float wallJumpForceAutoClimb = 14f;      // Усиленный вертикальный импульс
+    public float wallJumpHorizForceAutoClimb = 8f;  // Усиленный горизонтальный импульс
     [Header("Wall Slide Deceleration")]
     public float wallGrabDecel = 30f;
     private int wallContactSide = 0;
@@ -432,19 +435,28 @@ public class PlayerController : MonoBehaviour
     private IEnumerator PerformWallJump()
     {
         yield return null;
+
+        // Определяем, используем ли усиленный wall jump (во время авто-взбирания)
+        bool boosted = autoClimbing;
+
+        float vert = boosted ? wallJumpForceAutoClimb : wallJumpForce;
+        float horiz = boosted ? wallJumpHorizForceAutoClimb : wallJumpHorizForce;
+
         if (Mathf.Abs(hInput) > 0.01f && Mathf.Sign(hInput) == -wallContactSide)
         {
-            rb.linearVelocity = new Vector2(-wallContactSide * wallJumpHorizForce, wallJumpForce);
+            rb.linearVelocity = new Vector2(-wallContactSide * horiz, vert);
             StartCoroutine(WallJumpLockCoroutine());
         }
         else
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, vert);
         }
+
         StopWallSlide();
         timeSinceDetached = 0f;
         jumpCount = 0;
     }
+
 
     private void StopWallSlide()
     {
