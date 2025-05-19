@@ -49,7 +49,7 @@ public class RangedEnemyAI : EnemyTeleportController
     private float lastDodgeTime = -10f;
     private float dodgeCooldown = 1.5f;
 
-    // Адаптивность
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     private int failedShots = 0;
     private int maxFailedShotsBeforeRelocate = 3;
 
@@ -84,7 +84,7 @@ public class RangedEnemyAI : EnemyTeleportController
             return;
         }
 
-        // Реакция на отражённые снаряды
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (Time.time - lastDodgeTime > dodgeCooldown && DetectReflectedProjectile())
         {
             if (CanTeleport())
@@ -99,14 +99,14 @@ public class RangedEnemyAI : EnemyTeleportController
             return;
         }
 
-        // Телепортация для поиска выгодной позиции
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (CanTeleport() && ShouldTeleportToBetterPosition())
         {
             TryTeleportToSmartPosition();
             return;
         }
 
-        // Отступление, если игрок слишком близко
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         if (distanceToPlayer < retreatDistance && Time.time - lastRetreatTime > retreatCooldown)
         {
             if (CanSafelyRetreat())
@@ -117,7 +117,7 @@ public class RangedEnemyAI : EnemyTeleportController
             }
         }
 
-        // Смена состояния по дистанции
+        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (distanceToPlayer > detectionRadius)
         {
             currentState = State.Pursuing;
@@ -170,12 +170,12 @@ public class RangedEnemyAI : EnemyTeleportController
                 break;
 
             case State.Retreating:
-                // Отступление реализовано в корутине RetreatRoutine
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ RetreatRoutine
                 break;
         }
     }
 
-    // --- Адаптивное позиционирование и телепорт ---
+    // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
 
     bool IsInAttackRange()
     {
@@ -185,17 +185,17 @@ public class RangedEnemyAI : EnemyTeleportController
 
     void MoveToBestAttackPosition()
     {
-        // Если уже в хорошей позиции — не двигаемся
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (IsInAttackRange())
             return;
 
-        // Двигаемся к позиции на оптимальной дистанции с прямой видимостью
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Vector2 direction = (transform.position.x < player.position.x) ? Vector2.left : Vector2.right;
         float targetX = Mathf.Clamp(player.position.x + direction.x * Random.Range(minAttackDistance, maxAttackDistance),
                                    player.position.x - maxAttackDistance, player.position.x + maxAttackDistance);
         Vector2 targetPos = new Vector2(targetX, transform.position.y);
 
-        // Проверка на препятствия и землю
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ
         if (IsPositionSafe(targetPos))
         {
             Vector2 newPosition = Vector2.MoveTowards(transform.position, targetPos, moveSpeed * Time.deltaTime);
@@ -205,7 +205,7 @@ public class RangedEnemyAI : EnemyTeleportController
 
     bool ShouldTeleportToBetterPosition()
     {
-        // Если не в зоне атаки или игрок слишком близко — телепортируемся
+        // пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         float dist = Vector2.Distance(transform.position, player.position);
         return !IsInAttackRange() || dist < retreatDistance * 0.8f;
     }
@@ -221,7 +221,7 @@ public class RangedEnemyAI : EnemyTeleportController
 
     Vector2? FindSmartTeleportPosition()
     {
-        // Ищем позиции на окружности вокруг игрока в радиусе атаки
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         List<Vector2> candidates = new List<Vector2>();
         int samples = 12;
         for (int i = 0; i < samples; i++)
@@ -248,15 +248,15 @@ public class RangedEnemyAI : EnemyTeleportController
 
     bool IsPositionSafe(Vector2 pos)
     {
-        // Проверка земли
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         RaycastHit2D groundHit = Physics2D.Raycast(pos, Vector2.down, 2f, groundMask);
         if (groundHit.collider == null)
             return false;
-        // Проверка препятствий
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Collider2D wall = Physics2D.OverlapCircle(pos, 0.5f, groundMask | obstacleMask);
         if (wall != null)
             return false;
-        // Можно добавить проверку на других врагов и ловушки
+        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         return true;
     }
 
@@ -268,7 +268,7 @@ public class RangedEnemyAI : EnemyTeleportController
         return hit.collider == null;
     }
 
-    // --- Реакция на отражённые снаряды ---
+    // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
 
     bool DetectReflectedProjectile()
     {
@@ -287,7 +287,7 @@ public class RangedEnemyAI : EnemyTeleportController
         return false;
     }
 
-    // --- Отступление ---
+    // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
 
     bool CanSafelyRetreat()
     {
@@ -324,7 +324,7 @@ public class RangedEnemyAI : EnemyTeleportController
         currentState = State.Pursuing;
     }
 
-    // --- Вспомогательные методы ---
+    // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ ---
 
     bool CheckVisualContact()
     {
@@ -373,20 +373,20 @@ public class RangedEnemyAI : EnemyTeleportController
 
     IEnumerator MeleeAttackRoutine()
     {
-        currentState = State.Retreating; // временно блокируем стрельбу и движение
+        currentState = State.Retreating; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         lastMeleeAttackTime = Time.time;
 
-        // Включаем хитбокс удара
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         if (meleeAttackHitbox != null)
             meleeAttackHitbox.enabled = true;
 
-        // Краткая задержка для анимации удара
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         yield return new WaitForSeconds(0.15f);
 
         if (meleeAttackHitbox != null)
             meleeAttackHitbox.enabled = false;
 
-        // Краткая пауза после удара
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         yield return new WaitForSeconds(0.2f);
 
         currentState = State.Pursuing;
@@ -416,20 +416,21 @@ public class RangedEnemyAI : EnemyTeleportController
     {
         if (collision.CompareTag("Player"))
         {
-            // Отталкивание
+            // РќР°РЅРѕСЃРёРј РѕС‚С‚Р°Р»РєРёРІР°РЅРёРµ
             Rigidbody2D playerRb = collision.GetComponent<Rigidbody2D>();
+            Vector2 knockDir = (collision.transform.position - transform.position).normalized;
             if (playerRb != null)
             {
-                Vector2 knockDir = (collision.transform.position - transform.position).normalized;
-                playerRb.velocity = new Vector2(knockDir.x * meleeAttackKnockback, playerRb.velocity.y);
+                playerRb.linearVelocity = new Vector2(knockDir.x * meleeAttackKnockback, playerRb.linearVelocity.y);
             }
 
-            // Оглушение (если есть компонент)
+            // РћРіР»СѓС€РµРЅРёРµ (РёСЃРїСЂР°РІР»РµРЅРѕ: РїРµСЂРµРґР°С‘Рј РІСЃРµ РїР°СЂР°РјРµС‚СЂС‹)
             var stun = collision.GetComponent<PlayerStunController>();
             if (stun != null)
-                stun.Stun(meleeAttackStunDuration);
+                stun.Stun(meleeAttackStunDuration, knockDir, meleeAttackKnockback);
         }
     }
+
 
 
 

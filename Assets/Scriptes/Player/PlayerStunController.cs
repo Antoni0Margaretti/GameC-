@@ -5,7 +5,7 @@ public class PlayerStunController : MonoBehaviour
     private bool isStunned = false;
     private float stunEndTime = 0f;
     private Rigidbody2D rb;
-    private CombatController combatController; // если есть
+    private CombatController combatController; // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
     void Awake()
     {
@@ -31,7 +31,7 @@ public class PlayerStunController : MonoBehaviour
             combatController.enabled = false;
 
         if (rb != null && knockbackForce > 0f)
-            rb.velocity = new Vector2(knockbackDir.x * knockbackForce, rb.velocity.y);
+            rb.linearVelocity = new Vector2(knockbackDir.x * knockbackForce, rb.linearVelocity.y);
     }
 
     public bool IsStunned => isStunned;

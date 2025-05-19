@@ -251,7 +251,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             if (stun != null)
             {
                 Vector2 knockDir = (playerObj.transform.position - transform.position).normalized;
-                stun.Stun(stunnedTime, knockDir, 8f); // 8f — сила отталкивания, можно вынести в переменную
+                stun.Stun(stunnedTime, knockDir, parryKnockbackForce); // Используем переменную
             }
         }
         BlockAttack(attackerPosition);
@@ -267,8 +267,8 @@ public class MeleeEnemyAI : EnemyTeleportController
             DisableAllHitboxes();
             StartCoroutine(StunnedRoutine());
         }
-
     }
+
 
     private void BlockAttack(Vector2 threatPosition)
     {
@@ -378,16 +378,60 @@ public class MeleeEnemyAI : EnemyTeleportController
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (isDead) return;
+
+        bool isParry = false;
+
+        // Основная атака игрока (комбо)
         if (collision.CompareTag("PlayerAttack"))
         {
-            TakeDamage();
+            if (isInvulnerable)
+            {
+                // Парируем с уникальным эффектом
+                TryParry(collision.transform.position);
+                isParry = true;
+            }
+            else
+            {
+                TakeDamage();
+            }
         }
-        var proj = collision.GetComponent<Projectile>();
-        if (proj != null && proj.isReflected)
+        // Атакующий рывок игрока
+        else if (collision.CompareTag("DashAttack"))
         {
-            TakeDamage();
+            if (isInvulnerable)
+            {
+                // Парируем (разворот), без уникального эффекта
+                BlockAttack(collision.transform.position);
+                isParry = true;
+            }
+            else
+            {
+                TakeDamage();
+            }
         }
+        // Отражённый снаряд
+        else
+        {
+            var proj = collision.GetComponent<Projectile>();
+            if (proj != null && proj.isReflected)
+            {
+                if (isInvulnerable)
+                {
+                    // Парируем (разворот), без уникального эффекта
+                    BlockAttack(collision.transform.position);
+                    isParry = true;
+                }
+                else
+                {
+                    TakeDamage();
+                }
+            }
+        }
+
+        // Здесь можно добавить вызов анимации парирования, если isParry == true
     }
+
+
 
     private void OnAttackHitboxTriggerEnter2D(Collider2D collision)
     {
