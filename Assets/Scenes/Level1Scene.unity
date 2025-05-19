@@ -1151,8 +1151,14 @@ MonoBehaviour:
   wallJumpForce: 10
   wallJumpHorizForce: 10
   wallDetachCooldown: 0.5
+  wallJumpForceAutoClimb: 14
+  wallJumpHorizForceAutoClimb: 8
+  wallGrabDecel: 30
   wallAutoClimbDistance: 2
   wallAutoClimbSpeed: 8
+  stepCheckDistance: 0.2
+  stepHeight: 0.3
+  stepUpSpeed: 10
   defaultGravityScale: 2.6
   wallJumpLockDuration: 0.2
   wallHangGravityScale: 0

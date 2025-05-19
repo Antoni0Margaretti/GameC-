@@ -133,20 +133,26 @@ public class MeleeEnemyAI : MonoBehaviour
 
     public void TryParry(Vector2 attackerPosition)
     {
-        if (currentState == State.MeleeComboAttacking)
+        // Всегда поворачиваемся к атаке
+        BlockAttack(attackerPosition);
+
+        // Если враг сейчас атакует (или в рывке) и игрок парирует — оглушаем
+        if (currentState == State.MeleeComboAttacking ||
+            currentState == State.Dashing ||
+            currentState == State.Charging)
         {
             StopAllCoroutines();
             currentState = State.Stunned;
             isInvulnerable = false;
             rb.linearVelocity = Vector2.zero;
             DisableAllHitboxes();
+            // Здесь можно вызвать эффект парирования
             StartCoroutine(StunnedRoutine());
         }
-        else if (isInvulnerable)
-        {
-            BlockAttack(attackerPosition);
-        }
+        // В остальных состояниях враг просто уязвим (получает урон), но не оглушается
+        // (например, если игрок атакует, а не парирует)
     }
+
 
     private void BlockAttack(Vector2 threatPosition)
     {
