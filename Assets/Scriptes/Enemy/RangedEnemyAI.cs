@@ -1,20 +1,25 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
-public class RangedEnemyAI : MonoBehaviour
+public class RangedEnemyAI : EnemyTeleportController
 {
     private enum State { Pursuing, Aiming, Shooting, Reloading, Retreating }
     private State currentState = State.Pursuing;
 
     [Header("Detection & Visual Contact")]
-    public float detectionRadius = 8f;
+    public float detectionRadius = 12f;
+    public float minAttackDistance = 5f;
+    public float maxAttackDistance = 10f;
     public Transform designatedPoint;
     public LayerMask obstacleMask;
 
     [Header("Movement Settings")]
     public float moveSpeed = 2f;
     public float retreatSpeed = 1.5f;
-    public float retreatDistance = 2f;
+    public float retreatDistance = 3.5f;
+    public float retreatCooldown = 3f;
+    private float lastRetreatTime = -10f;
 
     [Header("Attack & Aiming Settings")]
     public float aimTime = 1f;
@@ -28,12 +33,15 @@ public class RangedEnemyAI : MonoBehaviour
     public Transform firePoint;
     public float projectileSpeed = 10f;
 
-    [Header("Player Reference")]
-    public Transform player;
-
     private int currentAmmo;
     private float lastShotTime;
     private float lastSightTime;
+    private float lastDodgeTime = -10f;
+    private float dodgeCooldown = 1.5f;
+
+    // Адаптивность
+    private int failedShots = 0;
+    private int maxFailedShotsBeforeRelocate = 3;
 
     void Start()
     {
@@ -49,18 +57,50 @@ public class RangedEnemyAI : MonoBehaviour
 
     void Update()
     {
-        if (player == null)
+        if (player == null || isTeleporting)
             return;
 
-        float horizontalDistance = Mathf.Abs(transform.position.x - player.position.x);
+        float distanceToPlayer = Vector2.Distance(transform.position, player.position);
 
-        if (horizontalDistance < retreatDistance)
-            currentState = State.Retreating;
-        else if (currentState == State.Retreating && horizontalDistance >= (retreatDistance + 0.5f))
+        // Реакция на отражённые снаряды
+        if (Time.time - lastDodgeTime > dodgeCooldown && DetectReflectedProjectile())
+        {
+            if (CanTeleport())
+            {
+                TryTeleportToSmartPosition();
+            }
+            else if (CanSafelyRetreat())
+            {
+                StartCoroutine(RetreatRoutine());
+            }
+            lastDodgeTime = Time.time;
+            return;
+        }
+
+        // Телепортация для поиска выгодной позиции
+        if (CanTeleport() && ShouldTeleportToBetterPosition())
+        {
+            TryTeleportToSmartPosition();
+            return;
+        }
+
+        // Отступление, если игрок слишком близко
+        if (distanceToPlayer < retreatDistance && Time.time - lastRetreatTime > retreatCooldown)
+        {
+            if (CanSafelyRetreat())
+            {
+                StartCoroutine(RetreatRoutine());
+                lastRetreatTime = Time.time;
+                return;
+            }
+        }
+
+        // Смена состояния по дистанции
+        if (distanceToPlayer > detectionRadius)
+        {
             currentState = State.Pursuing;
-
-        if (horizontalDistance > detectionRadius)
             return;
+        }
 
         bool hasVisualContact = CheckVisualContact();
         if (hasVisualContact)
@@ -69,8 +109,8 @@ public class RangedEnemyAI : MonoBehaviour
         switch (currentState)
         {
             case State.Pursuing:
-                ChasePlayer();
-                if (hasVisualContact)
+                MoveToBestAttackPosition();
+                if (hasVisualContact && IsInAttackRange())
                     StartCoroutine(BeginAiming());
                 if (!hasVisualContact && Time.time - lastSightTime > lostSightReloadDelay && currentAmmo < magazineSize)
                 {
@@ -83,7 +123,7 @@ public class RangedEnemyAI : MonoBehaviour
                 break;
 
             case State.Shooting:
-                if (hasVisualContact)
+                if (hasVisualContact && IsInAttackRange())
                 {
                     if (Time.time - lastShotTime >= fireRate && currentAmmo > 0)
                     {
@@ -108,43 +148,161 @@ public class RangedEnemyAI : MonoBehaviour
                 break;
 
             case State.Retreating:
-                RetreatFromPlayer();
-                if (hasVisualContact)
-                {
-                    if (Time.time - lastShotTime >= fireRate && currentAmmo > 0)
-                    {
-                        Shoot();
-                        lastShotTime = Time.time;
-                        currentAmmo--;
-                        if (currentAmmo <= 0)
-                        {
-                            currentState = State.Reloading;
-                            StartCoroutine(Reload());
-                        }
-                    }
-                    else if (Time.time - lastSightTime > lostSightReloadDelay)
-                    {
-                        currentState = State.Reloading;
-                        StartCoroutine(Reload());
-                    }
-                }
+                // Отступление реализовано в корутине RetreatRoutine
                 break;
         }
     }
 
-    void ChasePlayer()
+    // --- Адаптивное позиционирование и телепорт ---
+
+    bool IsInAttackRange()
     {
-        Vector2 targetPos = new Vector2(player.position.x, transform.position.y);
-        Vector2 newPosition = Vector2.MoveTowards(transform.position, targetPos, moveSpeed * Time.deltaTime);
-        transform.position = newPosition;
+        float dist = Vector2.Distance(transform.position, player.position);
+        return dist >= minAttackDistance && dist <= maxAttackDistance && CheckVisualContact();
     }
 
-    void RetreatFromPlayer()
+    void MoveToBestAttackPosition()
+    {
+        // Если уже в хорошей позиции — не двигаемся
+        if (IsInAttackRange())
+            return;
+
+        // Двигаемся к позиции на оптимальной дистанции с прямой видимостью
+        Vector2 direction = (transform.position.x < player.position.x) ? Vector2.left : Vector2.right;
+        float targetX = Mathf.Clamp(player.position.x + direction.x * Random.Range(minAttackDistance, maxAttackDistance),
+                                   player.position.x - maxAttackDistance, player.position.x + maxAttackDistance);
+        Vector2 targetPos = new Vector2(targetX, transform.position.y);
+
+        // Проверка на препятствия и землю
+        if (IsPositionSafe(targetPos))
+        {
+            Vector2 newPosition = Vector2.MoveTowards(transform.position, targetPos, moveSpeed * Time.deltaTime);
+            transform.position = newPosition;
+        }
+    }
+
+    bool ShouldTeleportToBetterPosition()
+    {
+        // Если не в зоне атаки или игрок слишком близко — телепортируемся
+        float dist = Vector2.Distance(transform.position, player.position);
+        return !IsInAttackRange() || dist < retreatDistance * 0.8f;
+    }
+
+    void TryTeleportToSmartPosition()
+    {
+        Vector2? pos = FindSmartTeleportPosition();
+        if (pos.HasValue)
+        {
+            StartCoroutine(TeleportToPositionRoutine(pos.Value));
+        }
+    }
+
+    Vector2? FindSmartTeleportPosition()
+    {
+        // Ищем позиции на окружности вокруг игрока в радиусе атаки
+        List<Vector2> candidates = new List<Vector2>();
+        int samples = 12;
+        for (int i = 0; i < samples; i++)
+        {
+            float angle = i * Mathf.PI * 2f / samples;
+            Vector2 offset = new Vector2(Mathf.Cos(angle), 0) * Random.Range(minAttackDistance, maxAttackDistance);
+            Vector2 candidate = (Vector2)player.position + offset;
+            if (IsPositionSafe(candidate) && HasLineOfSight(candidate, player.position))
+                candidates.Add(candidate);
+        }
+        if (candidates.Count > 0)
+            return candidates[Random.Range(0, candidates.Count)];
+        return null;
+    }
+
+    IEnumerator TeleportToPositionRoutine(Vector2 pos)
+    {
+        isTeleporting = true;
+        yield return new WaitForSeconds(teleportChargeTimeNear);
+        transform.position = pos;
+        lastTeleportTime = Time.time;
+        isTeleporting = false;
+    }
+
+    bool IsPositionSafe(Vector2 pos)
+    {
+        // Проверка земли
+        RaycastHit2D groundHit = Physics2D.Raycast(pos, Vector2.down, 2f, groundMask);
+        if (groundHit.collider == null)
+            return false;
+        // Проверка препятствий
+        Collider2D wall = Physics2D.OverlapCircle(pos, 0.5f, groundMask | obstacleMask);
+        if (wall != null)
+            return false;
+        // Можно добавить проверку на других врагов и ловушки
+        return true;
+    }
+
+    bool HasLineOfSight(Vector2 from, Vector2 to)
+    {
+        Vector2 dir = (to - from).normalized;
+        float dist = Vector2.Distance(from, to);
+        RaycastHit2D hit = Physics2D.Raycast(from, dir, dist, obstacleMask);
+        return hit.collider == null;
+    }
+
+    // --- Реакция на отражённые снаряды ---
+
+    bool DetectReflectedProjectile()
+    {
+        Projectile[] projectiles = FindObjectsOfType<Projectile>();
+        foreach (var proj in projectiles)
+        {
+            if (proj.isReflected && !proj.isEnemyProjectile)
+            {
+                Vector2 toEnemy = (Vector2)transform.position - (Vector2)proj.transform.position;
+                float angle = Vector2.Angle(proj.transform.right, toEnemy);
+                float dist = toEnemy.magnitude;
+                if (dist < 3f && angle < 45f)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    // --- Отступление ---
+
+    bool CanSafelyRetreat()
     {
         float direction = Mathf.Sign(transform.position.x - player.position.x);
-        float newX = Mathf.MoveTowards(transform.position.x, transform.position.x + direction, retreatSpeed * Time.deltaTime);
-        transform.position = new Vector2(newX, transform.position.y);
+        Vector2 checkOrigin = (Vector2)transform.position;
+        float step = 0.3f;
+        int steps = Mathf.CeilToInt(retreatDistance / step);
+
+        for (int i = 1; i <= steps; i++)
+        {
+            Vector2 pos = checkOrigin + Vector2.right * direction * (i * step);
+            RaycastHit2D groundHit = Physics2D.Raycast(pos, Vector2.down, 1.2f, groundMask);
+            if (groundHit.collider == null)
+                return false;
+            Collider2D wall = Physics2D.OverlapCircle(pos, 0.3f, groundMask | obstacleMask);
+            if (wall != null)
+                return false;
+        }
+        return true;
     }
+
+    IEnumerator RetreatRoutine()
+    {
+        currentState = State.Retreating;
+        float direction = Mathf.Sign(transform.position.x - player.position.x);
+        float timer = 0f;
+        float duration = retreatDistance / retreatSpeed;
+        while (timer < duration)
+        {
+            timer += Time.deltaTime;
+            transform.position += new Vector3(direction * retreatSpeed * Time.deltaTime, 0, 0);
+            yield return null;
+        }
+        currentState = State.Pursuing;
+    }
+
+    // --- Вспомогательные методы ---
 
     bool CheckVisualContact()
     {
@@ -163,7 +321,7 @@ public class RangedEnemyAI : MonoBehaviour
 
         currentState = State.Aiming;
         yield return new WaitForSeconds(aimTime);
-        if (CheckVisualContact())
+        if (CheckVisualContact() && IsInAttackRange())
             currentState = State.Shooting;
         else
             currentState = State.Pursuing;
@@ -187,8 +345,8 @@ public class RangedEnemyAI : MonoBehaviour
     {
         yield return new WaitForSeconds(reloadTime);
         currentAmmo = magazineSize;
-        float horizontalDistance = Mathf.Abs(transform.position.x - player.position.x);
-        currentState = (horizontalDistance < retreatDistance) ? State.Retreating : State.Pursuing;
+        float distanceToPlayer = Vector2.Distance(transform.position, player.position);
+        currentState = (distanceToPlayer < retreatDistance) ? State.Retreating : State.Pursuing;
     }
 
     void OnDrawGizmosSelected()
@@ -197,5 +355,9 @@ public class RangedEnemyAI : MonoBehaviour
         Gizmos.DrawWireSphere(transform.position, detectionRadius);
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, retreatDistance);
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, minAttackDistance);
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, maxAttackDistance);
     }
 }
