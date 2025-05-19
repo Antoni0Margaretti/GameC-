@@ -1,9 +1,9 @@
 using UnityEngine;
 using System.Collections;
 
-public class MeleeEnemyAI : MonoBehaviour
+public class MeleeEnemyAI : EnemyTeleportController
 {
-    private enum State { Pursuing, Charging, Dashing, Recovery, Stunned, MeleeComboAttacking }
+    private enum State { Pursuing, Charging, Dashing, Recovery, Stunned, MeleeComboAttacking, EvasionDashing, Retreating }
     private State currentState = State.Pursuing;
 
     [Header("Detection & Movement")]
@@ -21,29 +21,44 @@ public class MeleeEnemyAI : MonoBehaviour
     public float recoveryTime = 0.5f;
     public float stunnedTime = 1f;
 
-    [Header("References")]
-    public Transform player;
-
-    [Header("Invulnerability / Parry")]
-    public bool isInvulnerable { get; private set; } = true;
-
     [Header("Combo Attack Hitboxes")]
-    public Collider2D[] comboAttackHitboxes; // Индекс соответствует номеру удара (0 - первый удар и т.д.)
+    public Collider2D[] comboAttackHitboxes;
 
     [Header("Dash Attack Hitbox")]
     public Collider2D dashAttackHitbox;
 
     [Header("Parry Projectile Hitbox")]
-    public Collider2D parryProjectileHitbox; // Для парирования снарядов
+    public Collider2D parryProjectileHitbox;
 
     [Header("Melee Combo Settings")]
     public float meleeAttackRange = 1.2f;
     public float meleeAttackDelay = 0.25f;
     public int meleeComboCount = 2;
 
-    private Rigidbody2D rb;
+    [Header("Evasion Dash Settings")]
+    public float evasionDashSpeed = 14f;
+    public float evasionDashDuration = 0.12f;
+    public float evasionDashCooldown = 1.5f;
+    private float lastEvasionDashTime = -10f;
+
+    [Header("Retreat Dash Settings")]
+    public float retreatDashDistance = 1.5f;
+    public float retreatDashSpeed = 10f;
+    public float retreatDashDuration = 0.15f;
+    public float retreatMinDistance = 0.7f;
+    public float retreatCooldown = 1.2f;
+    private float lastRetreatTime = -10f;
+
     private bool isDead = false;
     private Coroutine parryProjectileCoroutine;
+    public bool isInvulnerable = false;
+
+    // Память о неудачных попытках добраться до игрока
+    private int failedPathAttempts = 0;
+    private int maxFailedAttemptsBeforeTeleport = 3;
+
+    public bool IsDead => isDead;
+    public string CurrentState => currentState.ToString();
 
     void Start()
     {
@@ -61,15 +76,39 @@ public class MeleeEnemyAI : MonoBehaviour
 
     void Update()
     {
-        if (player == null || isDead)
+        if (player == null || isDead || isTeleporting)
             return;
 
         if (currentState == State.Pursuing)
         {
+            // Телепортация (приоритет)
+            if (CanTeleport())
+            {
+                TryTeleport();
+                return;
+            }
+
+            float distanceToPlayer = Vector2.Distance(transform.position, player.position);
+
+            // Разрыв дистанции
+            if (distanceToPlayer < retreatMinDistance && Time.time - lastRetreatTime > retreatCooldown)
+            {
+                if (CanRetreat())
+                {
+                    StartCoroutine(RetreatDashRoutine());
+                    return;
+                }
+                else if (Time.time - lastEvasionDashTime > evasionDashCooldown &&
+                         CanDash((transform.position - player.position).normalized, evasionDashSpeed * evasionDashDuration))
+                {
+                    StartCoroutine(EvasionDashRoutine((transform.position - player.position).normalized));
+                    return;
+                }
+            }
+
             float horizontalDistance = Mathf.Abs(transform.position.x - player.position.x);
             float verticalDistance = Mathf.Abs(transform.position.y - player.position.y);
 
-            float distanceToPlayer = Vector2.Distance(transform.position, player.position);
             if (distanceToPlayer <= meleeAttackRange)
             {
                 StartCoroutine(MeleeComboAttackRoutine());
@@ -83,10 +122,27 @@ public class MeleeEnemyAI : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (currentState == State.Pursuing)
+        if (currentState == State.Pursuing && !isTeleporting)
         {
             Vector2 targetPos = new Vector2(player.position.x, transform.position.y);
             Vector2 newPos = Vector2.MoveTowards(rb.position, targetPos, moveSpeed * Time.fixedDeltaTime);
+
+            // Память о неудачных попытках
+            if (rb.position == newPos)
+            {
+                failedPathAttempts++;
+                if (failedPathAttempts >= maxFailedAttemptsBeforeTeleport)
+                {
+                    TryTeleport();
+                    failedPathAttempts = 0;
+                    return;
+                }
+            }
+            else
+            {
+                failedPathAttempts = 0;
+            }
+
             rb.MovePosition(newPos);
         }
     }
@@ -100,6 +156,23 @@ public class MeleeEnemyAI : MonoBehaviour
 
         for (int i = 0; i < meleeComboCount; i++)
         {
+            // Окно для отмены атаки (например, 0.2 сек)
+            float cancelWindow = 0.2f;
+            float timer = 0f;
+            while (timer < cancelWindow)
+            {
+                float distanceToPlayer = Vector2.Distance(transform.position, player.position);
+                if (distanceToPlayer > meleeAttackRange)
+                {
+                    currentState = State.Pursuing;
+                    isInvulnerable = true;
+                    DisableAllHitboxes();
+                    yield break;
+                }
+                timer += Time.deltaTime;
+                yield return null;
+            }
+
             // Окно для парирования снарядов (например, 0.2 сек)
             if (parryProjectileCoroutine != null)
                 StopCoroutine(parryProjectileCoroutine);
@@ -110,7 +183,6 @@ public class MeleeEnemyAI : MonoBehaviour
             if (currentState == State.Stunned || isDead)
                 yield break;
 
-            // Включаем hitbox для текущего удара
             EnableComboHitbox(i);
             yield return new WaitForSeconds(0.15f);
             DisableComboHitbox(i);
@@ -119,6 +191,40 @@ public class MeleeEnemyAI : MonoBehaviour
         }
 
         isInvulnerable = true;
+        currentState = State.Pursuing;
+    }
+
+    IEnumerator EvasionDashRoutine(Vector2 direction)
+    {
+        currentState = State.EvasionDashing;
+        isInvulnerable = true;
+        float timer = 0f;
+        rb.linearVelocity = direction.normalized * evasionDashSpeed;
+        while (timer < evasionDashDuration)
+        {
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        rb.linearVelocity = Vector2.zero;
+        isInvulnerable = false;
+        currentState = State.Pursuing;
+        lastEvasionDashTime = Time.time;
+    }
+
+    IEnumerator RetreatDashRoutine()
+    {
+        currentState = State.Retreating;
+        isInvulnerable = false; // Враг уязвим!
+        float direction = Mathf.Sign(transform.position.x - player.position.x);
+        float timer = 0f;
+        rb.linearVelocity = new Vector2(direction * retreatDashSpeed, 0f);
+        while (timer < retreatDashDuration)
+        {
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        rb.linearVelocity = Vector2.zero;
+        lastRetreatTime = Time.time;
         currentState = State.Pursuing;
     }
 
@@ -133,10 +239,8 @@ public class MeleeEnemyAI : MonoBehaviour
 
     public void TryParry(Vector2 attackerPosition)
     {
-        // Всегда поворачиваемся к атаке
         BlockAttack(attackerPosition);
 
-        // Если враг сейчас атакует (или в рывке) и игрок парирует — оглушаем
         if (currentState == State.MeleeComboAttacking ||
             currentState == State.Dashing ||
             currentState == State.Charging)
@@ -146,13 +250,9 @@ public class MeleeEnemyAI : MonoBehaviour
             isInvulnerable = false;
             rb.linearVelocity = Vector2.zero;
             DisableAllHitboxes();
-            // Здесь можно вызвать эффект парирования
             StartCoroutine(StunnedRoutine());
         }
-        // В остальных состояниях враг просто уязвим (получает урон), но не оглушается
-        // (например, если игрок атакует, а не парирует)
     }
-
 
     private void BlockAttack(Vector2 threatPosition)
     {
@@ -167,17 +267,24 @@ public class MeleeEnemyAI : MonoBehaviour
 
     IEnumerator ChargeRoutine()
     {
+        if (!CanDash((player.position - transform.position).normalized, dashSpeed * dashDuration))
+        {
+            currentState = State.Pursuing;
+            isInvulnerable = true;
+            if (parryProjectileHitbox != null)
+                parryProjectileHitbox.enabled = false;
+            yield break;
+        }
+
         if (currentState != State.Pursuing)
             yield break;
         currentState = State.Charging;
         isInvulnerable = false;
 
-        // Окно для парирования снарядов (например, 0.2 сек)
         if (parryProjectileCoroutine != null)
             StopCoroutine(parryProjectileCoroutine);
         parryProjectileCoroutine = StartCoroutine(ParryProjectileWindow(0.2f));
 
-        // Окно отмены атаки
         float cancelWindow = 0.2f;
         float timer = 0f;
         while (timer < cancelWindow)
@@ -210,10 +317,10 @@ public class MeleeEnemyAI : MonoBehaviour
 
         Vector2 dashDirection = ((Vector2)player.position - rb.position).normalized;
         float timer = 0f;
+        rb.linearVelocity = dashDirection * dashSpeed;
         while (timer < dashDuration)
         {
             timer += Time.deltaTime;
-            rb.linearVelocity = dashDirection * dashSpeed;
             yield return null;
         }
         rb.linearVelocity = Vector2.zero;
@@ -273,7 +380,7 @@ public class MeleeEnemyAI : MonoBehaviour
         {
             var playerController = collision.GetComponent<PlayerController>();
             if (playerController != null && playerController.isInvulnerable)
-                return; // Игнорируем урон, если игрок неуязвим
+                return;
 
             PlayerDeath playerDeath = collision.GetComponent<PlayerDeath>();
             if (playerDeath != null)
@@ -281,7 +388,6 @@ public class MeleeEnemyAI : MonoBehaviour
         }
     }
 
-    // Проверка, является ли коллайдер одним из комбо-хитбоксов
     private bool IsComboHitbox(Collider2D col)
     {
         if (comboAttackHitboxes == null) return false;
@@ -354,5 +460,27 @@ public class MeleeEnemyAI : MonoBehaviour
                 if (hitbox != null) hitbox.enabled = false;
         if (parryProjectileHitbox != null)
             parryProjectileHitbox.enabled = false;
+    }
+
+    private bool IsGroundAhead(float checkDistance = 0.3f)
+    {
+        Vector2 origin = (Vector2)transform.position + Vector2.right * Mathf.Sign(player.position.x - transform.position.x) * checkDistance;
+        RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, 1.0f, LayerMask.GetMask("Ground"));
+        return hit.collider != null;
+    }
+
+    private bool CanDash(Vector2 direction, float dashDistance)
+    {
+        Vector2 origin = (Vector2)transform.position;
+        Vector2 dashEnd = origin + direction.normalized * dashDistance;
+        RaycastHit2D wallHit = Physics2D.Raycast(origin, direction, dashDistance, LayerMask.GetMask("Ground"));
+        RaycastHit2D groundHit = Physics2D.Raycast(dashEnd, Vector2.down, 1.0f, LayerMask.GetMask("Ground"));
+        return wallHit.collider == null && groundHit.collider != null;
+    }
+
+    private bool CanRetreat()
+    {
+        float direction = Mathf.Sign(transform.position.x - player.position.x);
+        return CanDash(Vector2.right * direction * -1f, retreatDashDistance);
     }
 }
