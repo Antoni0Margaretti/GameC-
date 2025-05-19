@@ -49,6 +49,10 @@ public class MeleeEnemyAI : EnemyTeleportController
     public float retreatCooldown = 1.2f;
     private float lastRetreatTime = -10f;
 
+    [Header("Parry (Stun Player) Settings")]
+    public float parryStunDuration = 0.7f;
+    public float parryKnockbackForce = 8f;
+
     private bool isDead = false;
     private Coroutine parryProjectileCoroutine;
     public bool isInvulnerable = false;
@@ -239,6 +243,17 @@ public class MeleeEnemyAI : EnemyTeleportController
 
     public void TryParry(Vector2 attackerPosition)
     {
+        // attackerPosition — позиция игрока, который атакует
+        var playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj != null)
+        {
+            var stun = playerObj.GetComponent<PlayerStunController>();
+            if (stun != null)
+            {
+                Vector2 knockDir = (playerObj.transform.position - transform.position).normalized;
+                stun.Stun(stunnedTime, knockDir, 8f); // 8f — сила отталкивания, можно вынести в переменную
+            }
+        }
         BlockAttack(attackerPosition);
 
         if (currentState == State.MeleeComboAttacking ||
@@ -252,6 +267,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             DisableAllHitboxes();
             StartCoroutine(StunnedRoutine());
         }
+
     }
 
     private void BlockAttack(Vector2 threatPosition)

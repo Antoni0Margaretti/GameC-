@@ -33,6 +33,16 @@ public class RangedEnemyAI : EnemyTeleportController
     public Transform firePoint;
     public float projectileSpeed = 10f;
 
+    [Header("Melee Attack Settings")]
+    public float meleeAttackRange = 1.2f;
+    public float meleeAttackCooldown = 2f;
+    public float meleeAttackKnockback = 8f;
+    public float meleeAttackStunDuration = 0.7f;
+    public Collider2D meleeAttackHitbox;
+
+    private float lastMeleeAttackTime = -10f;
+    private Coroutine meleeAttackCoroutine;
+
     private int currentAmmo;
     private float lastShotTime;
     private float lastSightTime;
@@ -61,6 +71,18 @@ public class RangedEnemyAI : EnemyTeleportController
             return;
 
         float distanceToPlayer = Vector2.Distance(transform.position, player.position);
+
+        if (Vector2.Distance(transform.position, player.position) <= meleeAttackRange
+            && Time.time - lastMeleeAttackTime > meleeAttackCooldown
+            && currentState != State.Aiming
+            && currentState != State.Shooting
+            && currentState != State.Reloading
+            && !isTeleporting)
+        {
+            if (meleeAttackCoroutine == null)
+                meleeAttackCoroutine = StartCoroutine(MeleeAttackRoutine());
+            return;
+        }
 
         // Реакция на отражённые снаряды
         if (Time.time - lastDodgeTime > dodgeCooldown && DetectReflectedProjectile())
@@ -348,6 +370,68 @@ public class RangedEnemyAI : EnemyTeleportController
         float distanceToPlayer = Vector2.Distance(transform.position, player.position);
         currentState = (distanceToPlayer < retreatDistance) ? State.Retreating : State.Pursuing;
     }
+
+    IEnumerator MeleeAttackRoutine()
+    {
+        currentState = State.Retreating; // временно блокируем стрельбу и движение
+        lastMeleeAttackTime = Time.time;
+
+        // Включаем хитбокс удара
+        if (meleeAttackHitbox != null)
+            meleeAttackHitbox.enabled = true;
+
+        // Краткая задержка для анимации удара
+        yield return new WaitForSeconds(0.15f);
+
+        if (meleeAttackHitbox != null)
+            meleeAttackHitbox.enabled = false;
+
+        // Краткая пауза после удара
+        yield return new WaitForSeconds(0.2f);
+
+        currentState = State.Pursuing;
+        meleeAttackCoroutine = null;
+    }
+    void OnEnable()
+    {
+        if (meleeAttackHitbox != null)
+        {
+            var trigger = meleeAttackHitbox.GetComponent<AttackHitboxTrigger>();
+            if (trigger != null)
+                trigger.OnTriggerEnterEvent += OnMeleeAttackHitboxTriggerEnter2D;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (meleeAttackHitbox != null)
+        {
+            var trigger = meleeAttackHitbox.GetComponent<AttackHitboxTrigger>();
+            if (trigger != null)
+                trigger.OnTriggerEnterEvent -= OnMeleeAttackHitboxTriggerEnter2D;
+        }
+    }
+
+    void OnMeleeAttackHitboxTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Player"))
+        {
+            // Отталкивание
+            Rigidbody2D playerRb = collision.GetComponent<Rigidbody2D>();
+            if (playerRb != null)
+            {
+                Vector2 knockDir = (collision.transform.position - transform.position).normalized;
+                playerRb.velocity = new Vector2(knockDir.x * meleeAttackKnockback, playerRb.velocity.y);
+            }
+
+            // Оглушение (если есть компонент)
+            var stun = collision.GetComponent<PlayerStunController>();
+            if (stun != null)
+                stun.Stun(meleeAttackStunDuration);
+        }
+    }
+
+
 
     void OnDrawGizmosSelected()
     {
