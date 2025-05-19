@@ -438,6 +438,20 @@ public class MeleeEnemyAI : EnemyTeleportController
         if ((currentState == State.Dashing && dashAttackHitbox != null && collision.CompareTag("Player")) ||
             (currentState == State.MeleeComboAttacking && IsComboHitbox(collision)))
         {
+            // Проверяем, не парирует ли игрок
+            var parry = collision.GetComponent<ParryHitbox>();
+            if (parry != null && parry.IsParrying)
+            {
+                // Игрок парировал атаку врага — враг оглушается
+                StopAllCoroutines();
+                currentState = State.Stunned;
+                isInvulnerable = false;
+                rb.linearVelocity = Vector2.zero;
+                DisableAllHitboxes();
+                StartCoroutine(StunnedRoutine());
+                return;
+            }
+
             var playerController = collision.GetComponent<PlayerController>();
             if (playerController != null && playerController.isInvulnerable)
                 return;
@@ -447,6 +461,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 playerDeath.Die();
         }
     }
+
 
     private bool IsComboHitbox(Collider2D col)
     {
