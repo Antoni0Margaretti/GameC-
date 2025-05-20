@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -75,6 +76,14 @@ public class PlayerController : MonoBehaviour
     public float stepHeight = 0.3f;        // Максимальная высота "ступеньки"
     public float stepUpSpeed = 10f;        // Скорость подъёма на ступеньку
 
+    // --- Вязкость врагов
+    [Header("Enemy Viscosity")]
+    public float normalSpeed = 5f;
+    public float minSpeedInEnemy = 1.5f;
+    public float viscosityAcceleration = 2.5f; // чем больше, тем быстрее замедление
+    private float currentSpeed;
+    private List<Collider2D> viscosityZones = new List<Collider2D>();
+
     // --- Гравитация
     public float defaultGravityScale;
     private float originalGravityScale;
@@ -132,6 +141,27 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        float speedModifier = 1f;
+
+        // --- Вязкость врагов ---
+        if (viscosityZones.Count > 0 && !isDashing && !isSliding)
+        {
+            float maxOverlap = 0f;
+            Collider2D playerCol = GetComponent<Collider2D>();
+            foreach (var enemyCol in viscosityZones)
+            {
+                if (enemyCol == null) continue;
+                Bounds overlap = GetOverlapBounds(playerCol, enemyCol);
+                float overlapRatio = overlap.size.x / playerCol.bounds.size.x;
+                if (overlapRatio > maxOverlap)
+                    maxOverlap = overlapRatio;
+            }
+            // Нелинейное замедление: чем больше пересечение, тем сильнее замедление (ускорение)
+            speedModifier = Mathf.Lerp(1f, minSpeedInEnemy / normalSpeed, Mathf.Pow(maxOverlap, viscosityAcceleration));
+        }
+
+        currentSpeed = normalSpeed * speedModifier;
+
         // Блокируем wall hang/ledge climb при атаке или парировании
         if (combatController != null && (combatController.IsParrying || combatController.IsAttacking))
         {
@@ -157,7 +187,6 @@ public class PlayerController : MonoBehaviour
         if (!isSlidingOnWall)
             collisionController.ignoreFlipForWallChecks = false;
         HandleStepOver();
-
     }
 
     void FixedUpdate()
@@ -167,7 +196,8 @@ public class PlayerController : MonoBehaviour
         {
             if (grounded)
             {
-                rb.linearVelocity = new Vector2(hInput * speed, rb.linearVelocity.y);
+                // --- Используем currentSpeed вместо speed ---
+                rb.linearVelocity = new Vector2(hInput * currentSpeed, rb.linearVelocity.y);
             }
             else
             {
@@ -464,7 +494,6 @@ public class PlayerController : MonoBehaviour
         jumpCount = 0;
     }
 
-
     private void StopWallSlide()
     {
         isSlidingOnWall = false;
@@ -652,7 +681,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
     private void Flip()
     {
         facingRight = !facingRight;
@@ -677,5 +705,35 @@ public class PlayerController : MonoBehaviour
             death.Die();
         else
             Debug.Log("Игрок погиб!");
+    }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.gameObject.layer == LayerMask.NameToLayer("EnemyViscosity"))
+        {
+            if (!viscosityZones.Contains(other))
+                viscosityZones.Add(other);
+        }
+    }
+
+    void OnTriggerExit2D(Collider2D other)
+    {
+        if (other.gameObject.layer == LayerMask.NameToLayer("EnemyViscosity"))
+        {
+            viscosityZones.Remove(other);
+        }
+    }
+
+    Bounds GetOverlapBounds(Collider2D a, Collider2D b)
+    {
+        Bounds ba = a.bounds;
+        Bounds bb = b.bounds;
+        float minX = Mathf.Max(ba.min.x, bb.min.x);
+        float maxX = Mathf.Min(ba.max.x, bb.max.x);
+        float minY = Mathf.Max(ba.min.y, bb.min.y);
+        float maxY = Mathf.Min(ba.max.y, bb.max.y);
+        if (minX < maxX && minY < maxY)
+            return new Bounds(new Vector3((minX + maxX) / 2, (minY + maxY) / 2, 0), new Vector3(maxX - minX, maxY - minY, 1));
+        return new Bounds(Vector3.zero, Vector3.zero);
     }
 }
