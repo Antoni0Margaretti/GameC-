@@ -4,7 +4,12 @@ using System.Collections.Generic;
 
 public class RangedEnemyAI : EnemyTeleportController
 {
-    private enum State { Pursuing, Aiming, Shooting, Reloading, Retreating }
+    private enum State
+    {
+        Pursuing, Aiming, Shooting, Reloading, Retreating,
+        FakeTeleporting, MultiTeleporting, TeleportBehindPlayer, Dodging
+    }
+
     private State currentState = State.Pursuing;
 
     [Header("Detection & Visual Contact")]
@@ -67,6 +72,32 @@ public class RangedEnemyAI : EnemyTeleportController
 
     void Update()
     {
+        // 1. Уклонение от отражённого снаряда
+        if (Time.time - lastDodgeTime > dodgeCooldown && DetectReflectedProjectile())
+        {
+            if (CanTeleport())
+            {
+                // 50% шанс сделать серию телепортов, 50% — фейк-манёвр
+                if (Random.value < 0.5f)
+                    StartCoroutine(MultiTeleportRoutine());
+                else
+                    StartCoroutine(FakeTeleportRoutine());
+            }
+            else
+            {
+                StartCoroutine(DodgeRoutine());
+            }
+            lastDodgeTime = Time.time;
+            return;
+        }
+
+        // 2. Если игрок слишком близко — телепорт за спину
+        if (Vector2.Distance(transform.position, player.position) < meleeAttackRange * 1.2f && CanTeleport())
+        {
+            StartCoroutine(TeleportBehindPlayerRoutine());
+            return;
+        }
+
         if (player == null || isTeleporting)
             return;
 
@@ -431,7 +462,60 @@ public class RangedEnemyAI : EnemyTeleportController
         }
     }
 
+    IEnumerator FakeTeleportRoutine()
+    {
+        currentState = State.FakeTeleporting;
+        // Визуальный эффект иллюзии (можно добавить Instantiate(иллюзия))
+        yield return new WaitForSeconds(0.2f);
+        // На самом деле не телепортируемся, просто сбиваем игрока с толку
+        currentState = State.Pursuing;
+    }
 
+    IEnumerator MultiTeleportRoutine(int count = 3)
+    {
+        currentState = State.MultiTeleporting;
+        for (int i = 0; i < count; i++)
+        {
+            Vector2? pos = FindSmartTeleportPosition();
+            if (pos.HasValue)
+            {
+                yield return TeleportToPositionRoutine(pos.Value);
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+        currentState = State.Pursuing;
+    }
+
+    IEnumerator TeleportBehindPlayerRoutine()
+    {
+        currentState = State.TeleportBehindPlayer;
+        Vector2 dir = (player.right != Vector3.zero ? (Vector2)player.right : Vector2.right);
+        Vector2 behind = (Vector2)player.position - dir * 1.5f;
+        if (IsPositionSafe(behind))
+        {
+            yield return TeleportToPositionRoutine(behind);
+        }
+        currentState = State.Pursuing;
+    }
+
+    IEnumerator DodgeRoutine()
+    {
+        currentState = State.Dodging;
+        float dodgeDir = Mathf.Sign(transform.position.x - player.position.x);
+        Vector2 dodgeTarget = (Vector2)transform.position + Vector2.right * dodgeDir * 2f;
+        if (IsPositionSafe(dodgeTarget))
+        {
+            float timer = 0f;
+            float duration = 0.2f;
+            while (timer < duration)
+            {
+                timer += Time.deltaTime;
+                transform.position = Vector2.MoveTowards(transform.position, dodgeTarget, moveSpeed * 2 * Time.deltaTime);
+                yield return null;
+            }
+        }
+        currentState = State.Pursuing;
+    }
 
 
     void OnDrawGizmosSelected()

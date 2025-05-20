@@ -135,7 +135,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             var initialState = new EnemyState
             {
                 Position = transform.position,
-                Velocity = rb.velocity,
+                Velocity = rb.linearVelocity,
                 IsGrounded = IsGrounded(),
                 DashUsed = false,
                 JumpUsed = false
@@ -238,14 +238,14 @@ public class MeleeEnemyAI : EnemyTeleportController
             if (action.Type == EnemyActionType.Walk)
             {
                 Vector2 move = action.Direction * moveSpeed;
-                rb.velocity = new Vector2(move.x, rb.velocity.y);
+                rb.linearVelocity = new Vector2(move.x, rb.linearVelocity.y);
                 if (Vector2.Distance(transform.position, transform.position + (Vector3)action.Direction * 0.2f) < 0.2f)
                     currentActionIndex++;
             }
             else if (action.Type == EnemyActionType.AirControl)
             {
                 Vector2 move = action.Direction * moveSpeed;
-                rb.velocity = new Vector2(move.x, rb.velocity.y);
+                rb.linearVelocity = new Vector2(move.x, rb.linearVelocity.y);
                 currentActionIndex++;
             }
         }
