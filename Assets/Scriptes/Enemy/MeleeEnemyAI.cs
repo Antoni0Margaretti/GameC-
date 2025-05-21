@@ -89,6 +89,7 @@ public class MeleeEnemyAI : EnemyTeleportController
     private float lastPlayerParryTime = -10f;
     private float lastPlayerDodgeTime = -10f;
 
+
     private static bool groupTeleportActive = false;
     public bool IsDead => isDead;
     public string CurrentState => currentState.ToString();
@@ -140,27 +141,6 @@ public class MeleeEnemyAI : EnemyTeleportController
                 DashUsed = false,
                 JumpUsed = false
             };
-            if (actionPathfinder == null)
-            {
-                Debug.LogError("actionPathfinder не назначен!");
-                return;
-            }
-
-            if (player == null)
-            {
-                Debug.LogError("player не назначен!");
-                return;
-            }
-
-            if (initialState == null)
-            {
-                Debug.LogError("initialState не назначен!");
-                return;
-            }
-
-            // Если все проверки пройдены, вызываем метод.
-            currentActions = actionPathfinder.FindActionPath(transform.position, player.position, initialState);
-
             currentActions = actionPathfinder.FindActionPath(transform.position, player.position, initialState);
             currentActionIndex = 0;
         }
