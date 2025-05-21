@@ -47,7 +47,6 @@ public class ActionBasedPathfinder : MonoBehaviour
             {
                 EnemyState next = SimulateAction(state, action);
 
-
                 string stateKey = $"{state.Position.x:F2},{state.Position.y:F2},{state.Velocity.x:F2},{state.Velocity.y:F2},{state.IsGrounded},{state.DashUsed},{state.JumpUsed}";
                 if (!visited.Contains(stateKey))
                 {
@@ -55,7 +54,6 @@ public class ActionBasedPathfinder : MonoBehaviour
                     var newActions = new List<EnemyAction>(actions) { action };
                     queue.Enqueue((next, newActions));
                 }
-
             }
         }
         return null;
