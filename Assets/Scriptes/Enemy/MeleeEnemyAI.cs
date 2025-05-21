@@ -77,8 +77,6 @@ public class MeleeEnemyAI : EnemyTeleportController
     private Coroutine parryProjectileCoroutine;
     public bool isInvulnerable = false;
 
-    public SimpleGridPathfinding pathfinding;
-
     private int failedPathAttempts = 0;
     private int maxFailedAttemptsBeforeTeleport = 3;
 
