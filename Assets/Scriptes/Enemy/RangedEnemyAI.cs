@@ -45,6 +45,14 @@ public class RangedEnemyAI : EnemyTeleportController
     public float meleeAttackStunDuration = 0.7f;
     public Collider2D meleeAttackHitbox;
 
+    [Header("Pathfinding")]
+    public ActionBasedPathfinder actionPathfinder;
+    private List<EnemyAction> currentActions;
+    private int currentActionIndex = 0;
+    private float pathRecalcTimer = 0f;
+    private float pathRecalcInterval = 0.5f;
+    private bool isPerformingManeuver = false; // Блокировка других действий
+
     private float lastMeleeAttackTime = -10f;
     private Coroutine meleeAttackCoroutine;
 
@@ -57,6 +65,11 @@ public class RangedEnemyAI : EnemyTeleportController
     // ������������
     private int failedShots = 0;
     private int maxFailedShotsBeforeRelocate = 3;
+    private int playerAggroCloseCount = 0;
+    private int playerAggroFarCount = 0;
+    private float lastAggroCheckTime = 0f;
+    private float aggroCheckInterval = 2f;
+
 
     void Start()
     {
@@ -72,6 +85,26 @@ public class RangedEnemyAI : EnemyTeleportController
 
     void Update()
     {
+
+        float distanceToPlayer = Vector2.Distance(transform.position, player.position);
+        if (Time.time - lastAggroCheckTime > aggroCheckInterval)
+        {
+            if (distanceToPlayer < meleeAttackRange * 1.5f)
+                playerAggroCloseCount++;
+            else
+                playerAggroFarCount++;
+            lastAggroCheckTime = Time.time;
+        }
+
+        // Если игрок часто сближается — чаще используем серию телепортов
+        if (playerAggroCloseCount > playerAggroFarCount + 2 && CanTeleport() && currentState == State.Pursuing)
+        {
+            StartCoroutine(MultiTeleportRoutine(3));
+            playerAggroCloseCount = 0;
+            playerAggroFarCount = 0;
+            return;
+        }
+
         // 1. Уклонение от отражённого снаряда
         if (Time.time - lastDodgeTime > dodgeCooldown && DetectReflectedProjectile())
         {
@@ -100,8 +133,6 @@ public class RangedEnemyAI : EnemyTeleportController
 
         if (player == null || isTeleporting)
             return;
-
-        float distanceToPlayer = Vector2.Distance(transform.position, player.position);
 
         if (Vector2.Distance(transform.position, player.position) <= meleeAttackRange
             && Time.time - lastMeleeAttackTime > meleeAttackCooldown
@@ -216,23 +247,85 @@ public class RangedEnemyAI : EnemyTeleportController
 
     void MoveToBestAttackPosition()
     {
-        // ���� ��� � ������� ������� � �� ���������
-        if (IsInAttackRange())
+        if (IsInAttackRange() || isPerformingManeuver)
             return;
 
-        // ��������� � ������� �� ����������� ��������� � ������ ����������
-        Vector2 direction = (transform.position.x < player.position.x) ? Vector2.left : Vector2.right;
-        float targetX = Mathf.Clamp(player.position.x + direction.x * Random.Range(minAttackDistance, maxAttackDistance),
-                                   player.position.x - maxAttackDistance, player.position.x + maxAttackDistance);
-        Vector2 targetPos = new Vector2(targetX, transform.position.y);
+        pathRecalcTimer += Time.deltaTime;
+        bool needNewPath = false;
 
-        // �������� �� ����������� � �����
-        if (IsPositionSafe(targetPos))
+        Vector2 targetPos = GetBestAttackPosition();
+
+        if (currentActions == null || currentActionIndex >= (currentActions?.Count ?? 0) || pathRecalcTimer > pathRecalcInterval)
+            needNewPath = true;
+
+        if (needNewPath)
         {
-            Vector2 newPosition = Vector2.MoveTowards(transform.position, targetPos, moveSpeed * Time.deltaTime);
-            transform.position = newPosition;
+            pathRecalcTimer = 0f;
+            var initialState = new EnemyState
+            {
+                Position = transform.position,
+                Velocity = rb != null ? rb.velocity : Vector2.zero,
+                IsGrounded = IsGrounded(),
+                DashUsed = false,
+                JumpUsed = false
+            };
+            currentActions = actionPathfinder.FindActionPath(transform.position, targetPos, initialState);
+            currentActionIndex = 0;
+        }
+
+        // Выполнение действий из pathfinder
+        if (currentActions != null && currentActionIndex < currentActions.Count)
+        {
+            ExecuteAction(currentActions[currentActionIndex]);
         }
     }
+
+    void ExecuteAction(EnemyAction action)
+    {
+        switch (action.Type)
+        {
+            case EnemyActionType.Walk:
+                Vector2 move = action.Direction * moveSpeed;
+                transform.position += (Vector3)(move * Time.deltaTime);
+                currentActionIndex++;
+                break;
+            case EnemyActionType.Jump:
+                if (IsGrounded() && rb != null)
+                {
+                    rb.velocity = new Vector2(rb.velocity.x, action.Force);
+                    currentActionIndex++;
+                }
+                break;
+            case EnemyActionType.StepOver:
+                StartCoroutine(StepOverRoutine(action));
+                break;
+                // Можно добавить AirControl и EvasionDash при необходимости
+        }
+    }
+
+    IEnumerator StepOverRoutine(EnemyAction action)
+    {
+        isPerformingManeuver = true;
+        float timer = 0f;
+        float duration = action.Duration;
+        while (timer < duration)
+        {
+            transform.position += Vector3.up * action.Force * Time.deltaTime;
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        isPerformingManeuver = false;
+        currentActionIndex++;
+    }
+    Vector2 GetBestAttackPosition()
+    {
+        // Простейшая логика: позиция на оптимальной дистанции от игрока
+        Vector2 dir = (transform.position.x < player.position.x) ? Vector2.left : Vector2.right;
+        float targetX = Mathf.Clamp(player.position.x + dir.x * Random.Range(minAttackDistance, maxAttackDistance),
+                                   player.position.x - maxAttackDistance, player.position.x + maxAttackDistance);
+        return new Vector2(targetX, transform.position.y);
+    }
+
 
     bool ShouldTeleportToBetterPosition()
     {
