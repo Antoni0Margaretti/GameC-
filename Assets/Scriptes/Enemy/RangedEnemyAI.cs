@@ -264,7 +264,7 @@ public class RangedEnemyAI : EnemyTeleportController
             var initialState = new EnemyState
             {
                 Position = transform.position,
-                Velocity = rb != null ? rb.velocity : Vector2.zero,
+                Velocity = rb != null ? rb.linearVelocity : Vector2.zero,
                 IsGrounded = IsGrounded(),
                 DashUsed = false,
                 JumpUsed = false
@@ -292,7 +292,7 @@ public class RangedEnemyAI : EnemyTeleportController
             case EnemyActionType.Jump:
                 if (IsGrounded() && rb != null)
                 {
-                    rb.velocity = new Vector2(rb.velocity.x, action.Force);
+                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, action.Force);
                     currentActionIndex++;
                 }
                 break;

@@ -140,6 +140,27 @@ public class MeleeEnemyAI : EnemyTeleportController
                 DashUsed = false,
                 JumpUsed = false
             };
+            if (actionPathfinder == null)
+            {
+                Debug.LogError("actionPathfinder не назначен!");
+                return;
+            }
+
+            if (player == null)
+            {
+                Debug.LogError("player не назначен!");
+                return;
+            }
+
+            if (initialState == null)
+            {
+                Debug.LogError("initialState не назначен!");
+                return;
+            }
+
+            // Если все проверки пройдены, вызываем метод.
+            currentActions = actionPathfinder.FindActionPath(transform.position, player.position, initialState);
+
             currentActions = actionPathfinder.FindActionPath(transform.position, player.position, initialState);
             currentActionIndex = 0;
         }
