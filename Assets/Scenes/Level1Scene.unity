@@ -128,7 +128,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2788723}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: Combo3Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -159,7 +159,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 50288715}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: ComboAttackHitbox1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -370,7 +370,7 @@ GameObject:
   - component: {fileID: 384500820}
   m_Layer: 0
   m_Name: ParryProjectileHitbox
-  m_TagString: Untagged
+  m_TagString: EnemyParryHitbox
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1434,7 +1434,7 @@ GameObject:
   - component: {fileID: 806581134}
   - component: {fileID: 806581135}
   - component: {fileID: 806581136}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: pixil-frame-0_0
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -6486,7 +6486,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 899982868}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: Combo1Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7228,11 +7228,13 @@ PolygonCollider2D:
   m_AutoTiling: 0
   m_Points:
     m_Paths:
-    - - {x: 0, y: 1}
-      - {x: -0.95105654, y: 0.30901697}
-      - {x: -0.5877852, y: -0.80901706}
-      - {x: 0.58778536, y: -0.80901694}
-      - {x: 0.9510565, y: 0.30901712}
+    - - {x: -0.12381402, y: 3.8477256}
+      - {x: -1.4463133, y: 1.5471582}
+      - {x: -0.67032945, y: -0.33439612}
+      - {x: -1.4429741, y: -2.8163025}
+      - {x: 1.7113526, y: -2.943177}
+      - {x: 1.248131, y: -0.9121947}
+      - {x: 1.5494914, y: 3.301193}
   m_UseDelaunayMesh: 0
 --- !u!1 &1349530459
 GameObject:
@@ -8670,7 +8672,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1584738402}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: DashAttackHitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -8701,7 +8703,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1660042169}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: ComboAttackHitbox2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -8734,7 +8736,7 @@ GameObject:
   - component: {fileID: 1750057061}
   - component: {fileID: 1750057063}
   - component: {fileID: 1750057062}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: DashAttackHitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -8830,7 +8832,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1890504788}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: Combo2Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}

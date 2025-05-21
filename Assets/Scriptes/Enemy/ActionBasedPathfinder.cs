@@ -34,7 +34,7 @@ public class ActionBasedPathfinder : MonoBehaviour
     {
         // Пример: BFS по состояниям (для реального проекта лучше A*)
         Queue<(EnemyState, List<EnemyAction>)> queue = new Queue<(EnemyState, List<EnemyAction>)>();
-        HashSet<Vector2> visited = new HashSet<Vector2>();
+        HashSet<string> visited = new HashSet<string>();
         queue.Enqueue((initialState, new List<EnemyAction>()));
 
         while (queue.Count > 0)
@@ -46,12 +46,15 @@ public class ActionBasedPathfinder : MonoBehaviour
             foreach (var action in GenerateActions(state))
             {
                 EnemyState next = SimulateAction(state, action);
-                if (!visited.Contains(next.Position))
+
+                string stateKey = $"{state.Position.x:F2},{state.Position.y:F2},{state.Velocity.x:F2},{state.Velocity.y:F2},{state.IsGrounded},{state.DashUsed},{state.JumpUsed}";
+                if (!visited.Contains(stateKey))
                 {
-                    visited.Add(next.Position);
+                    visited.Add(stateKey);
                     var newActions = new List<EnemyAction>(actions) { action };
                     queue.Enqueue((next, newActions));
                 }
+
             }
         }
         return null;
