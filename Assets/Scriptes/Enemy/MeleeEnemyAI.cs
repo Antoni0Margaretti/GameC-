@@ -78,8 +78,6 @@ public class MeleeEnemyAI : EnemyTeleportController
     public bool isInvulnerable = false;
 
     public SimpleGridPathfinding pathfinding;
-    private List<Vector2> currentPath;
-    private int currentPathIndex = 0;
 
     private int failedPathAttempts = 0;
     private int maxFailedAttemptsBeforeTeleport = 3;
@@ -88,7 +86,6 @@ public class MeleeEnemyAI : EnemyTeleportController
     private int playerDodgeCount = 0;
     private float lastPlayerParryTime = -10f;
     private float lastPlayerDodgeTime = -10f;
-
 
     private static bool groupTeleportActive = false;
     public bool IsDead => isDead;
@@ -99,12 +96,20 @@ public class MeleeEnemyAI : EnemyTeleportController
     void Start()
     {
         actionPathfinder = GetComponent<ActionBasedPathfinder>();
+        if (actionPathfinder == null)
+            Debug.LogError("ActionBasedPathfinder не найден на объекте врага!");
+
         rb = GetComponent<Rigidbody2D>();
+        if (rb == null)
+            Debug.LogError("Rigidbody2D не найден на объекте врага!");
+
         if (player == null)
         {
             GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
             if (playerObj != null)
                 player = playerObj.transform;
+            else
+                Debug.LogError("Player не найден на сцене!");
         }
         currentState = State.Pursuing;
         isInvulnerable = true;
@@ -154,7 +159,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         // --- Оставляем вашу логику телепорта и адаптации ---
         if (IsEmergencyTeleportSituation())
-        {
+        {       
             if (!groupTeleportActive && CanTeleport())
             {
                 groupTeleportActive = true;
@@ -503,7 +508,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.Pursuing;
     }
 
-
     IEnumerator EvasionDashRoutine(Vector2 direction)
     {
         currentState = State.EvasionDashing;
@@ -637,7 +641,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         yield return new WaitForSeconds(chargeTime - cancelWindow);
         StartCoroutine(DashRoutine());
     }
-
 
     IEnumerator DashRoutine()
     {

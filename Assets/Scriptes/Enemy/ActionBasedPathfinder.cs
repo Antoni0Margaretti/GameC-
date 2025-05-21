@@ -32,7 +32,6 @@ public class ActionBasedPathfinder : MonoBehaviour
 
     public List<EnemyAction> FindActionPath(Vector2 start, Vector2 target, EnemyState initialState)
     {
-        // Пример: BFS по состояниям (для реального проекта лучше A*)
         Queue<(EnemyState, List<EnemyAction>)> queue = new Queue<(EnemyState, List<EnemyAction>)>();
         HashSet<string> visited = new HashSet<string>();
         queue.Enqueue((initialState, new List<EnemyAction>()));
@@ -46,8 +45,7 @@ public class ActionBasedPathfinder : MonoBehaviour
             foreach (var action in GenerateActions(state))
             {
                 EnemyState next = SimulateAction(state, action);
-
-                string stateKey = $"{state.Position.x:F2},{state.Position.y:F2},{state.Velocity.x:F2},{state.Velocity.y:F2},{state.IsGrounded},{state.DashUsed},{state.JumpUsed}";
+                string stateKey = GetStateKey(next);
                 if (!visited.Contains(stateKey))
                 {
                     visited.Add(stateKey);
@@ -57,6 +55,11 @@ public class ActionBasedPathfinder : MonoBehaviour
             }
         }
         return null;
+    }
+
+    private string GetStateKey(EnemyState state)
+    {
+        return $"{state.Position.x:F2},{state.Position.y:F2},{state.Velocity.x:F2},{state.Velocity.y:F2},{state.IsGrounded},{state.DashUsed},{state.JumpUsed}";
     }
 
     public List<EnemyAction> GenerateActions(EnemyState state)
@@ -130,7 +133,9 @@ public class ActionBasedPathfinder : MonoBehaviour
         }
         next.Position += next.Velocity * action.Duration;
         next.Velocity += Physics2D.gravity * action.Duration;
-        // Здесь можно добавить raycast/overlap для проверки IsGrounded и коллизий
+
+        // Можно добавить raycast/overlap для проверки IsGrounded и коллизий, если потребуется более точная симуляция
+
         return next;
     }
 }

@@ -80,7 +80,15 @@ public class RangedEnemyAI : EnemyTeleportController
             GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
             if (playerObj != null)
                 player = playerObj.transform;
+            else
+                Debug.LogError("Player не найден на сцене!");
         }
+        actionPathfinder = GetComponent<ActionBasedPathfinder>();
+        if (actionPathfinder == null)
+            Debug.LogError("ActionBasedPathfinder не найден на объекте врага!");
+        rb = GetComponent<Rigidbody2D>();
+        if (rb == null)
+            Debug.LogError("Rigidbody2D не найден на объекте врага!");
     }
 
     void Update()
