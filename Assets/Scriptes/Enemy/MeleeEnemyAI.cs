@@ -98,6 +98,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
     void Start()
     {
+        actionPathfinder = GetComponent<ActionBasedPathfinder>();
         rb = GetComponent<Rigidbody2D>();
         if (player == null)
         {
