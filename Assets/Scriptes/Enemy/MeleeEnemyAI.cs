@@ -27,11 +27,12 @@ public class MeleeEnemyAI : EnemyTeleportController
     public float stepUpSpeed = 10f;
     public float obstacleCheckDistance = 0.5f;
 
+    // [Header("Teleport Settings")] // УДАЛЕНО: дублирует базовый класс!
+    // public float teleportCooldown = 5f; // УДАЛЕНО!
+    // public float teleportChargeTime = 0.7f; // Используем teleportChargeTimeFar/teleportChargeTimeNear из базового класса
+    // private float lastTeleportTry = -10f; // Используем lastTeleportTime из базового класса
     [Header("Teleport Settings")]
-    public float teleportDistance = 7f;
-    public float teleportCooldown = 5f;
-    public float teleportChargeTime = 0.7f;
-    private float lastTeleportTry = -10f;
+    public float teleportDistance = 15f; // Добавлено: значение по умолчанию для дистанции телепортации
 
     [Header("Dash Settings")]
     public float dashSpeed = 8f;
@@ -169,8 +170,20 @@ public class MeleeEnemyAI : EnemyTeleportController
         }
     }
 
+    void FixedUpdate()
+    {
+        // --- Блокировка движения вне состояния Pursuing ---
+        if (currentState != State.Pursuing)
+        {
+            rb.velocity = new Vector2(0, rb.velocity.y);
+            return;
+        }
+        // Движение к игроку реализовано в MoveTowardsPlayer (Update)
+    }
+
     private void MoveTowardsPlayer()
     {
+        if (currentState != State.Pursuing) return;
         float dir = Mathf.Sign(player.position.x - transform.position.x);
         Flip(dir);
         rb.velocity = new Vector2(dir * moveSpeed, rb.velocity.y);
@@ -179,7 +192,7 @@ public class MeleeEnemyAI : EnemyTeleportController
     private bool ShouldTeleport(float distanceToPlayer)
     {
         if (isTeleporting || groupTeleportActive) return false;
-        if (distanceToPlayer > teleportDistance && Time.time - lastTeleportTry > teleportCooldown)
+        if (distanceToPlayer > teleportDistance && Time.time - lastTeleportTime > teleportCooldown)
             return true;
         if (!IsGrounded() && !IsGroundBelow())
             return true;
@@ -189,8 +202,8 @@ public class MeleeEnemyAI : EnemyTeleportController
     private void TryTeleportSmart()
     {
         groupTeleportActive = true;
-        lastTeleportTry = Time.time;
-        StartCoroutine(TeleportToPlayerRoutine(teleportChargeTime));
+        lastTeleportTime = Time.time;
+        StartCoroutine(TeleportToPlayerRoutine(teleportChargeTimeFar));
         StartCoroutine(ReleaseGroupTeleportFlag());
     }
 
