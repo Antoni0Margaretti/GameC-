@@ -31,13 +31,13 @@ public class MeleeEnemyAI : EnemyTeleportController
     public float stunnedTime = 1f;
 
     [Header("Combo Attack Hitboxes")]
-    GameObject[] comboAttackHitboxes;
+    public GameObject[] comboAttackHitboxes;
 
     [Header("Dash Attack Hitbox")]
-    GameObject dashAttackHitbox;
+    public GameObject dashAttackHitbox;
 
     [Header("Parry Projectile Hitbox")]
-    GameObject parryProjectileHitbox;
+    public GameObject parryProjectileHitbox;
 
     [Header("Melee Combo Settings")]
     public float meleeAttackRange = 1.2f;
