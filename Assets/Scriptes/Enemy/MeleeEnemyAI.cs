@@ -91,6 +91,8 @@ public class MeleeEnemyAI : EnemyTeleportController
 
     private LayerMask groundLayer;
 
+    private bool facingRight = true;
+
     void Start()
     {
         actionPathfinder = GetComponent<ActionBasedPathfinder>();
@@ -240,10 +242,14 @@ public class MeleeEnemyAI : EnemyTeleportController
         {
             var action = currentActions[currentActionIndex];
             if (action.Type == EnemyActionType.Walk)
-            {
-                Vector2 targetPos = transform.position + (Vector3)action.Direction * action.Force * action.Duration;
-                rb.position = Vector2.MoveTowards(rb.position, targetPos, moveSpeed * Time.fixedDeltaTime);
-                if (Vector2.Distance(rb.position, targetPos) < 0.05f)
+            {   
+                float moveDir = Mathf.Sign(action.Direction.x);
+                Flip(moveDir);
+
+                Vector2 targetPos = (Vector2)transform.position + action.Direction * action.Force * action.Duration;
+                rb.velocity = new Vector2(moveDir * moveSpeed, rb.velocity.y);
+
+                if (Vector2.Distance(transform.position, targetPos) < 0.1f)
                     currentActionIndex++;
             }
             else if (action.Type == EnemyActionType.AirControl)
@@ -586,6 +592,17 @@ public class MeleeEnemyAI : EnemyTeleportController
         }
     }
 
+    private void Flip(float moveDir)
+    {
+        if ((moveDir > 0 && !facingRight) || (moveDir < 0 && facingRight))
+        {
+            facingRight = !facingRight;
+            Vector3 s = transform.localScale;
+            s.x *= -1;
+            transform.localScale = s;
+        }
+    }
+
     IEnumerator ChargeRoutine()
     {
         if (!CanDash((player.position - transform.position).normalized, dashSpeed * dashDuration))
@@ -748,22 +765,11 @@ public class MeleeEnemyAI : EnemyTeleportController
             var parry = collision.GetComponent<ParryHitbox>();
             if (parry != null && parry.IsParrying)
             {
-                StopAllCoroutines();
-                currentState = State.Stunned;
-                isInvulnerable = false;
-                rb.linearVelocity = Vector2.zero;
-                DisableAllHitboxes();
-                StartCoroutine(StunnedRoutine());
-                playerParryCount++;
-                lastPlayerParryTime = Time.time;
+                // ... оглушение и отброс врага
                 return;
             }
 
-            var playerController = collision.GetComponent<PlayerController>();
-            if (playerController != null && playerController.isInvulnerable)
-                return;
-
-            PlayerDeath playerDeath = collision.GetComponent<PlayerDeath>();
+            var playerDeath = collision.GetComponent<PlayerDeath>();
             if (playerDeath != null)
                 playerDeath.Die();
         }
@@ -864,5 +870,16 @@ public class MeleeEnemyAI : EnemyTeleportController
     {
         float direction = Mathf.Sign(transform.position.x - player.position.x);
         return CanDash(Vector2.right * direction * -1f, retreatDashDistance);
+    }
+
+    void SetInvulnerable(bool value)
+    {
+        isInvulnerable = value;
+        gameObject.tag = value ? "Invulnerable" : "Enemy";
+    }
+
+    private bool IsDashingOrAttacking()
+    {
+        return currentState == State.Dashing || currentState == State.MeleeComboAttacking;
     }
 }

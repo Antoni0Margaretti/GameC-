@@ -214,6 +214,7 @@ GameObject:
   m_Component:
   - component: {fileID: 50288715}
   - component: {fileID: 50288716}
+  - component: {fileID: 50288717}
   m_Layer: 10
   m_Name: ComboAttackHitbox1
   m_TagString: Untagged
@@ -289,6 +290,18 @@ PolygonCollider2D:
       - {x: 6.035654, y: -2.4028094}
       - {x: 6.0656796, y: 1.3667145}
   m_UseDelaunayMesh: 0
+--- !u!114 &50288717
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 50288714}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d81f5c6aabb01fc4a981874557ff2703, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &192885564
 GameObject:
   m_ObjectHideFlags: 0
@@ -991,7 +1004,7 @@ MonoBehaviour:
   detectionRadius: 10
   dashTriggerHorizDistance: 2
   dashTriggerVertDistance: 1
-  moveSpeed: 3
+  moveSpeed: 10
   jumpForce: 7
   stepCheckDistance: 0.2
   stepHeight: 0.3
@@ -1002,10 +1015,10 @@ MonoBehaviour:
   recoveryTime: 0.5
   stunnedTime: 1
   comboAttackHitboxes:
-  - {fileID: 50288716}
-  - {fileID: 1660042170}
-  dashAttackHitbox: {fileID: 1584738403}
-  parryProjectileHitbox: {fileID: 384500822}
+  - {fileID: 50288714}
+  - {fileID: 1660042168}
+  dashAttackHitbox: {fileID: 1584738401}
+  parryProjectileHitbox: {fileID: 384500819}
   meleeAttackRange: 1.2
   meleeAttackDelay: 0.25
   meleeComboCount: 2
@@ -1036,7 +1049,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 64aec449fa572af499ae6e00b342b9f3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 3
+  moveSpeed: 10
   jumpForce: 7
   evasionDashSpeed: 14
   evasionDashDuration: 0.12
@@ -1261,7 +1274,7 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 1
-  m_Constraints: 0
+  m_Constraints: 4
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -1787,9 +1800,9 @@ MonoBehaviour:
   stepCheckDistance: 0.2
   stepHeight: 0.3
   stepUpSpeed: 10
-  normalSpeed: 5
+  normalSpeed: 10
   minSpeedInEnemy: 1.5
-  viscosityAcceleration: 2.5
+  viscosityAcceleration: 5
   defaultGravityScale: 2.6
   wallJumpLockDuration: 0.2
   wallHangGravityScale: 0
@@ -8767,6 +8780,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1584738402}
   - component: {fileID: 1584738403}
+  - component: {fileID: 1584738404}
   m_Layer: 10
   m_Name: DashAttackHitbox
   m_TagString: Untagged
@@ -8843,6 +8857,18 @@ PolygonCollider2D:
       - {x: 3.685867, y: -0.94298655}
       - {x: 4.2166033, y: 1.9501626}
   m_UseDelaunayMesh: 0
+--- !u!114 &1584738404
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1584738401}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d81f5c6aabb01fc4a981874557ff2703, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1660042168
 GameObject:
   m_ObjectHideFlags: 0
@@ -8853,6 +8879,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1660042169}
   - component: {fileID: 1660042170}
+  - component: {fileID: 1660042171}
   m_Layer: 10
   m_Name: ComboAttackHitbox2
   m_TagString: Untagged
@@ -8927,6 +8954,18 @@ PolygonCollider2D:
       - {x: 3.3117185, y: -1.2436887}
       - {x: 9.441619, y: -1.6180227}
   m_UseDelaunayMesh: 0
+--- !u!114 &1660042171
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1660042168}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d81f5c6aabb01fc4a981874557ff2703, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1750057060
 GameObject:
   m_ObjectHideFlags: 0
