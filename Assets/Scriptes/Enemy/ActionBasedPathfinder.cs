@@ -36,14 +36,24 @@ public class ActionBasedPathfinder : MonoBehaviour
         HashSet<string> visited = new HashSet<string>();
         queue.Enqueue((initialState, new List<EnemyAction>()));
 
+        int maxIterations = 1000; // Лимит на количество шагов поиска
+        int iterations = 0;
+
         while (queue.Count > 0)
         {
+            if (++iterations > maxIterations)
+            {
+                Debug.LogWarning("Pathfinder: iteration limit reached, aborting search.");
+                break;
+            }
+
             var (state, actions) = queue.Dequeue();
             if (Vector2.Distance(state.Position, target) < 0.5f)
                 return actions;
 
             foreach (var action in GenerateActions(state))
             {
+                if (actions.Count > 20) continue; // Не строим слишком длинные пути
                 EnemyState next = SimulateAction(state, action);
                 string stateKey = GetStateKey(next);
                 if (!visited.Contains(stateKey))
@@ -59,7 +69,12 @@ public class ActionBasedPathfinder : MonoBehaviour
 
     private string GetStateKey(EnemyState state)
     {
-        return $"{state.Position.x:F2},{state.Position.y:F2},{state.Velocity.x:F2},{state.Velocity.y:F2},{state.IsGrounded},{state.DashUsed},{state.JumpUsed}";
+        // Квантование до 0.1 юнита
+        float px = Mathf.Round(state.Position.x * 10f) / 10f;
+        float py = Mathf.Round(state.Position.y * 10f) / 10f;
+        float vx = Mathf.Round(state.Velocity.x * 10f) / 10f;
+        float vy = Mathf.Round(state.Velocity.y * 10f) / 10f;
+        return $"{px},{py},{vx},{vy},{state.IsGrounded},{state.DashUsed},{state.JumpUsed}";
     }
 
     public List<EnemyAction> GenerateActions(EnemyState state)

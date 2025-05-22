@@ -134,13 +134,13 @@ public class CombatController : MonoBehaviour
 
     void ActivateAttackHitboxForCombo(int comboIndex)
     {
-        if (comboAttackHitboxes != null && comboIndex - 1 < comboAttackHitboxes.Length && comboAttackHitboxes[comboIndex - 1] != null)
+        if (comboAttackHitboxes != null && comboIndex - 1 >= 0 && comboIndex - 1 < comboAttackHitboxes.Length && comboAttackHitboxes[comboIndex - 1] != null)
             comboAttackHitboxes[comboIndex - 1].SetActive(true);
     }
 
     void DeactivateAttackHitboxForCombo(int comboIndex)
     {
-        if (comboAttackHitboxes != null && comboIndex - 1 < comboAttackHitboxes.Length && comboAttackHitboxes[comboIndex - 1] != null)
+        if (comboAttackHitboxes != null && comboIndex - 1 >= 0 && comboIndex - 1 < comboAttackHitboxes.Length && comboAttackHitboxes[comboIndex - 1] != null)
             comboAttackHitboxes[comboIndex - 1].SetActive(false);
     }
 
@@ -149,6 +149,9 @@ public class CombatController : MonoBehaviour
         isAttacking = false;
         currentCombo = 0;
         comboTimer = 0f;
+        if (comboAttackHitboxes != null)
+            foreach (var hitbox in comboAttackHitboxes)
+                if (hitbox != null) hitbox.SetActive(false);
     }
 
     void HandleParryInput()
