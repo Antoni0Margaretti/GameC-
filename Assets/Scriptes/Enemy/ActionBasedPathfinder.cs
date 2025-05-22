@@ -80,10 +80,11 @@ public class ActionBasedPathfinder : MonoBehaviour
     public List<EnemyAction> GenerateActions(EnemyState state)
     {
         var actions = new List<EnemyAction>();
+        float walkDuration = 0.2f; // Áûכמ 0.1f
         if (state.IsGrounded)
         {
-            actions.Add(new EnemyAction { Type = EnemyActionType.Walk, Direction = Vector2.right, Duration = 0.1f, Force = moveSpeed });
-            actions.Add(new EnemyAction { Type = EnemyActionType.Walk, Direction = Vector2.left, Duration = 0.1f, Force = moveSpeed });
+            actions.Add(new EnemyAction { Type = EnemyActionType.Walk, Direction = Vector2.right, Duration = walkDuration, Force = moveSpeed });
+            actions.Add(new EnemyAction { Type = EnemyActionType.Walk, Direction = Vector2.left, Duration = walkDuration, Force = moveSpeed });
         }
         if (state.IsGrounded && !state.JumpUsed)
             actions.Add(new EnemyAction { Type = EnemyActionType.Jump, Direction = Vector2.up, Duration = 0.1f, Force = jumpForce });

@@ -8,6 +8,8 @@ TagManager:
   - Wall
   - ParryHitbox
   - EnemyParryHitbox
+  - PlayerAttack
+  - DashAttack
   layers:
   - Default
   - TransparentFX

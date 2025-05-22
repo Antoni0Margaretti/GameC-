@@ -131,7 +131,7 @@ GameObject:
   - component: {fileID: 2788724}
   m_Layer: 11
   m_Name: Combo3Hitbox
-  m_TagString: Untagged
+  m_TagString: PlayerAttack
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -181,7 +181,7 @@ PolygonCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
@@ -266,7 +266,7 @@ PolygonCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
@@ -543,7 +543,7 @@ PolygonCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
@@ -886,7 +886,6 @@ GameObject:
   - component: {fileID: 603484856}
   - component: {fileID: 603484855}
   - component: {fileID: 603484854}
-  - component: {fileID: 603484853}
   m_Layer: 8
   m_Name: pixil-frame-0_0 (1)
   m_TagString: Untagged
@@ -958,7 +957,7 @@ Transform:
   m_GameObject: {fileID: 603484846}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -45.12, y: 12.27, z: 0}
+  m_LocalPosition: {x: -7.09, y: -2.39, z: 0}
   m_LocalScale: {x: 0.22, y: 0.22, z: 0.22}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -969,27 +968,6 @@ Transform:
   - {fileID: 384500820}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &603484853
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 603484846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 64aec449fa572af499ae6e00b342b9f3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  moveSpeed: 3
-  jumpForce: 7
-  evasionDashSpeed: 14
-  evasionDashDuration: 0.12
-  stepHeight: 0.3
-  stepUpSpeed: 10
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 64
 --- !u!114 &603484854
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1023,9 +1001,11 @@ MonoBehaviour:
   dashDuration: 0.3
   recoveryTime: 0.5
   stunnedTime: 1
-  comboAttackHitboxes: []
-  dashAttackHitbox: {fileID: 0}
-  parryProjectileHitbox: {fileID: 0}
+  comboAttackHitboxes:
+  - {fileID: 50288716}
+  - {fileID: 1660042170}
+  dashAttackHitbox: {fileID: 1584738403}
+  parryProjectileHitbox: {fileID: 384500822}
   meleeAttackRange: 1.2
   meleeAttackDelay: 0.25
   meleeComboCount: 2
@@ -1042,7 +1022,7 @@ MonoBehaviour:
   teleportCompareDistance: 8
   teleportMinPenalty: 2
   teleportMaxPenalty: 5
-  actionPathfinder: {fileID: 603484853}
+  actionPathfinder: {fileID: 0}
   isInvulnerable: 0
 --- !u!114 &603484855
 MonoBehaviour:
@@ -2021,7 +2001,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxCombo: 3
   comboResetTime: 1
-  comboAttackHitboxes: []
+  comboAttackHitboxes:
+  - {fileID: 899982867}
+  - {fileID: 1890504787}
+  - {fileID: 2788722}
   parryDuration: 0.5
   parryCooldown: 1
   parryHitbox: {fileID: 1020959632}
@@ -6543,7 +6526,7 @@ GameObject:
   - component: {fileID: 899982869}
   m_Layer: 11
   m_Name: Combo1Hitbox
-  m_TagString: Untagged
+  m_TagString: PlayerAttack
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -6593,7 +6576,7 @@ PolygonCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
@@ -8836,7 +8819,7 @@ PolygonCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
@@ -8922,7 +8905,7 @@ PolygonCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
@@ -8957,7 +8940,7 @@ GameObject:
   - component: {fileID: 1750057062}
   m_Layer: 11
   m_Name: DashAttackHitbox
-  m_TagString: Untagged
+  m_TagString: DashAttack
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -9054,7 +9037,7 @@ GameObject:
   - component: {fileID: 1890504789}
   m_Layer: 11
   m_Name: Combo2Hitbox
-  m_TagString: Untagged
+  m_TagString: PlayerAttack
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -9104,7 +9087,7 @@ PolygonCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0

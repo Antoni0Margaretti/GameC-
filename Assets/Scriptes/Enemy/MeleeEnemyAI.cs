@@ -31,13 +31,13 @@ public class MeleeEnemyAI : EnemyTeleportController
     public float stunnedTime = 1f;
 
     [Header("Combo Attack Hitboxes")]
-    public Collider2D[] comboAttackHitboxes;
+    GameObject[] comboAttackHitboxes;
 
     [Header("Dash Attack Hitbox")]
-    public Collider2D dashAttackHitbox;
+    GameObject dashAttackHitbox;
 
     [Header("Parry Projectile Hitbox")]
-    public Collider2D parryProjectileHitbox;
+    GameObject parryProjectileHitbox;
 
     [Header("Melee Combo Settings")]
     public float meleeAttackRange = 1.2f;
@@ -71,7 +71,7 @@ public class MeleeEnemyAI : EnemyTeleportController
     private List<EnemyAction> currentActions;
     private int currentActionIndex = 0;
     private float pathRecalcTimer = 0f;
-    private float pathRecalcInterval = 0.5f;
+    private float pathRecalcInterval = 1.0f; // Было 0.5f
 
     private bool isDead = false;
     private Coroutine parryProjectileCoroutine;
@@ -236,21 +236,20 @@ public class MeleeEnemyAI : EnemyTeleportController
 
     void FixedUpdate()
     {
-        // Action-based pathfinding: выполнение движения (Walk, AirControl)
         if (currentActions != null && currentActionIndex < currentActions.Count && currentState == State.Pursuing)
         {
             var action = currentActions[currentActionIndex];
             if (action.Type == EnemyActionType.Walk)
             {
-                Vector2 move = action.Direction * moveSpeed;
-                rb.linearVelocity = new Vector2(move.x, rb.linearVelocity.y);
-                if (Vector2.Distance(transform.position, transform.position + (Vector3)action.Direction * 0.2f) < 0.2f)
+                Vector2 targetPos = transform.position + (Vector3)action.Direction * action.Force * action.Duration;
+                rb.position = Vector2.MoveTowards(rb.position, targetPos, moveSpeed * Time.fixedDeltaTime);
+                if (Vector2.Distance(rb.position, targetPos) < 0.05f)
                     currentActionIndex++;
             }
             else if (action.Type == EnemyActionType.AirControl)
             {
-                Vector2 move = action.Direction * moveSpeed;
-                rb.linearVelocity = new Vector2(move.x, rb.linearVelocity.y);
+                Vector2 targetPos = transform.position + (Vector3)action.Direction * action.Force * action.Duration;
+                rb.position = Vector2.MoveTowards(rb.position, targetPos, moveSpeed * Time.fixedDeltaTime);
                 currentActionIndex++;
             }
         }
@@ -543,10 +542,10 @@ public class MeleeEnemyAI : EnemyTeleportController
     IEnumerator ParryProjectileWindow(float duration)
     {
         if (parryProjectileHitbox != null)
-            parryProjectileHitbox.enabled = true;
+            parryProjectileHitbox.SetActive(true);
         yield return new WaitForSeconds(duration);
         if (parryProjectileHitbox != null)
-            parryProjectileHitbox.enabled = false;
+            parryProjectileHitbox.SetActive(false);
     }
 
     public void TryParry(Vector2 attackerPosition)
@@ -594,7 +593,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             currentState = State.Pursuing;
             isInvulnerable = true;
             if (parryProjectileHitbox != null)
-                parryProjectileHitbox.enabled = false;
+                parryProjectileHitbox.SetActive(false);
             yield break;
         }
 
@@ -619,7 +618,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 currentState = State.Pursuing;
                 isInvulnerable = true;
                 if (parryProjectileHitbox != null)
-                    parryProjectileHitbox.enabled = false;
+                    parryProjectileHitbox.SetActive(false);
                 yield break;
             }
             var parryHitbox = player.GetComponentInChildren<ParryHitbox>();
@@ -628,7 +627,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 currentState = State.Pursuing;
                 isInvulnerable = true;
                 if (parryProjectileHitbox != null)
-                    parryProjectileHitbox.enabled = false;
+                    parryProjectileHitbox.SetActive(false);
                 yield break;
             }
             timer += Time.deltaTime;
@@ -646,7 +645,7 @@ public class MeleeEnemyAI : EnemyTeleportController
         isInvulnerable = true;
 
         if (dashAttackHitbox != null)
-            dashAttackHitbox.enabled = true;
+            dashAttackHitbox.SetActive(true);
 
         Vector2 dashDirection = ((Vector2)player.position - rb.position).normalized;
         float timer = 0f;
@@ -659,7 +658,7 @@ public class MeleeEnemyAI : EnemyTeleportController
         rb.linearVelocity = Vector2.zero;
 
         if (dashAttackHitbox != null)
-            dashAttackHitbox.enabled = false;
+            dashAttackHitbox.SetActive(false);
 
         StartCoroutine(RecoveryRoutine());
     }
@@ -824,24 +823,25 @@ public class MeleeEnemyAI : EnemyTeleportController
     private void EnableComboHitbox(int index)
     {
         if (comboAttackHitboxes != null && index < comboAttackHitboxes.Length && comboAttackHitboxes[index] != null)
-            comboAttackHitboxes[index].enabled = true;
+            comboAttackHitboxes[index].SetActive(true);
     }
+
 
     private void DisableComboHitbox(int index)
     {
         if (comboAttackHitboxes != null && index < comboAttackHitboxes.Length && comboAttackHitboxes[index] != null)
-            comboAttackHitboxes[index].enabled = false;
+            comboAttackHitboxes[index].SetActive(false);
     }
 
     private void DisableAllHitboxes()
     {
         if (dashAttackHitbox != null)
-            dashAttackHitbox.enabled = false;
+            dashAttackHitbox.SetActive(false);
         if (comboAttackHitboxes != null)
             foreach (var hitbox in comboAttackHitboxes)
-                if (hitbox != null) hitbox.enabled = false;
+                if (hitbox != null) hitbox.SetActive(false);
         if (parryProjectileHitbox != null)
-            parryProjectileHitbox.enabled = false;
+            parryProjectileHitbox.SetActive(false);
     }
 
     private bool IsGroundAhead(float checkDistance = 0.3f)
