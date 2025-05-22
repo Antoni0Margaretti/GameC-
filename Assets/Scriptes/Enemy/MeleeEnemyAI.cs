@@ -27,12 +27,8 @@ public class MeleeEnemyAI : EnemyTeleportController
     public float stepUpSpeed = 10f;
     public float obstacleCheckDistance = 0.5f;
 
-    // [Header("Teleport Settings")] // УДАЛЕНО: дублирует базовый класс!
-    // public float teleportCooldown = 5f; // УДАЛЕНО!
-    // public float teleportChargeTime = 0.7f; // Используем teleportChargeTimeFar/teleportChargeTimeNear из базового класса
-    // private float lastTeleportTry = -10f; // Используем lastTeleportTime из базового класса
     [Header("Teleport Settings")]
-    public float teleportDistance = 15f; // Добавлено: значение по умолчанию для дистанции телепортации
+    public float teleportDistance = 15f;
 
     [Header("Dash Settings")]
     public float dashSpeed = 8f;
@@ -175,7 +171,7 @@ public class MeleeEnemyAI : EnemyTeleportController
         // --- Блокировка движения вне состояния Pursuing ---
         if (currentState != State.Pursuing)
         {
-            rb.velocity = new Vector2(0, rb.velocity.y);
+            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
             return;
         }
         // Движение к игроку реализовано в MoveTowardsPlayer (Update)
@@ -186,7 +182,7 @@ public class MeleeEnemyAI : EnemyTeleportController
         if (currentState != State.Pursuing) return;
         float dir = Mathf.Sign(player.position.x - transform.position.x);
         Flip(dir);
-        rb.velocity = new Vector2(dir * moveSpeed, rb.velocity.y);
+        rb.linearVelocity = new Vector2(dir * moveSpeed, rb.linearVelocity.y);
     }
 
     private bool ShouldTeleport(float distanceToPlayer)
@@ -229,6 +225,9 @@ public class MeleeEnemyAI : EnemyTeleportController
         if (currentState != State.Pursuing) yield break;
         currentState = State.MeleeComboAttacking;
         SetInvulnerable(false);
+
+        // Всегда поворачиваемся к игроку перед атакой
+        Flip(Mathf.Sign(player.position.x - transform.position.x));
 
         for (int i = 0; i < meleeComboCount; i++)
         {
@@ -282,6 +281,9 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.Feinting;
         SetInvulnerable(false);
 
+        // Всегда поворачиваемся к игроку перед ложной атакой
+        Flip(Mathf.Sign(player.position.x - transform.position.x));
+
         yield return new WaitForSeconds(0.13f + Random.Range(-0.04f, 0.08f));
         if (Random.value < 0.7f)
             StartCoroutine(DashBehindPlayerRoutine());
@@ -300,13 +302,13 @@ public class MeleeEnemyAI : EnemyTeleportController
         Flip(behindDir.x);
         Vector2 dashTarget = (Vector2)player.position + behindDir * 1.2f;
         Vector2 dashDir = (dashTarget - (Vector2)transform.position).normalized;
-        rb.velocity = dashDir * evasionDashSpeed;
+        rb.linearVelocity = dashDir * evasionDashSpeed;
         while (timer < evasionDashDuration)
         {
             timer += Time.deltaTime;
             yield return null;
         }
-        rb.velocity = Vector2.zero;
+        rb.linearVelocity = Vector2.zero;
         SetInvulnerable(false);
         currentState = State.Pursuing;
     }
@@ -318,13 +320,13 @@ public class MeleeEnemyAI : EnemyTeleportController
         float timer = 0f;
         Vector2 dir = Random.value < 0.5f ? Vector2.right : Vector2.left;
         Flip(dir.x);
-        rb.velocity = dir * evasionDashSpeed;
+        rb.linearVelocity = dir * evasionDashSpeed;
         while (timer < evasionDashDuration * 0.7f)
         {
             timer += Time.deltaTime;
             yield return null;
         }
-        rb.velocity = Vector2.zero;
+        rb.linearVelocity = Vector2.zero;
         SetInvulnerable(false);
         currentState = State.Pursuing;
     }
@@ -336,13 +338,13 @@ public class MeleeEnemyAI : EnemyTeleportController
         float direction = Mathf.Sign(transform.position.x - player.position.x);
         Flip(direction);
         float timer = 0f;
-        rb.velocity = new Vector2(direction * retreatDashSpeed, 0f);
+        rb.linearVelocity = new Vector2(direction * retreatDashSpeed, 0f);
         while (timer < retreatDashDuration)
         {
             timer += Time.deltaTime;
             yield return null;
         }
-        rb.velocity = Vector2.zero;
+        rb.linearVelocity = Vector2.zero;
         lastRetreatTime = Time.time;
         currentState = State.Pursuing;
         SetInvulnerable(true);
@@ -373,7 +375,7 @@ public class MeleeEnemyAI : EnemyTeleportController
     IEnumerator JumpRoutine()
     {
         currentState = State.Jumping;
-        rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
         yield return new WaitForSeconds(0.2f);
         currentState = State.Pursuing;
     }
@@ -432,7 +434,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             StopAllCoroutines();
             currentState = State.Stunned;
             SetInvulnerable(false);
-            rb.velocity = Vector2.zero;
+            rb.linearVelocity = Vector2.zero;
             DisableAllHitboxes();
             StartCoroutine(StunnedRoutine());
         }
@@ -484,33 +486,29 @@ public class MeleeEnemyAI : EnemyTeleportController
     {
         if (isDead) return;
 
-        if (isInvulnerable && !IsDashingOrAttacking() && currentState != State.EvasionDashing && currentState != State.Retreating)
+        // Парирование только если реально атакован
+        if (collision.CompareTag("PlayerAttack") || collision.CompareTag("DashAttack"))
         {
-            if (collision.CompareTag("PlayerAttack") || collision.CompareTag("DashAttack"))
+            if (isInvulnerable && !IsDashingOrAttacking() && currentState != State.EvasionDashing && currentState != State.Retreating)
             {
                 TryParry(collision.transform.position);
                 return;
             }
-            var proj = collision.GetComponent<Projectile>();
-            if (proj != null && proj.isReflected)
-            {
-                TryParry(collision.transform.position);
-                return;
-            }
-        }
-        else if (isInvulnerable)
-        {
-            return;
-        }
-        else
-        {
-            if (collision.CompareTag("PlayerAttack") || collision.CompareTag("DashAttack"))
+            else if (!isInvulnerable)
             {
                 TakeDamage();
                 return;
             }
-            var proj = collision.GetComponent<Projectile>();
-            if (proj != null && proj.isReflected)
+        }
+        var proj = collision.GetComponent<Projectile>();
+        if (proj != null && proj.isReflected)
+        {
+            if (isInvulnerable && !IsDashingOrAttacking() && currentState != State.EvasionDashing && currentState != State.Retreating)
+            {
+                TryParry(collision.transform.position);
+                return;
+            }
+            else if (!isInvulnerable)
             {
                 TakeDamage();
                 return;
@@ -529,7 +527,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 StopAllCoroutines();
                 currentState = State.Stunned;
                 SetInvulnerable(false);
-                rb.velocity = new Vector2(-Mathf.Sign(transform.position.x - player.position.x) * 5f, 3f);
+                rb.linearVelocity = new Vector2(-Mathf.Sign(transform.position.x - player.position.x) * 5f, 3f);
                 DisableAllHitboxes();
                 StartCoroutine(StunnedRoutine());
                 return;
