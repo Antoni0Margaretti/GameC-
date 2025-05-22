@@ -7,7 +7,7 @@ public class MeleeEnemyAI : EnemyTeleportController
     private enum State
     {
         Pursuing, Charging, Dashing, Recovery, Stunned, MeleeComboAttacking,
-        EvasionDashing, Retreating, Jumping, StepOver
+        EvasionDashing, Retreating, Jumping, StepOver, Feinting
     }
     private State currentState = State.Pursuing;
 
@@ -67,11 +67,18 @@ public class MeleeEnemyAI : EnemyTeleportController
     public float teleportMinPenalty = 2f;
     public float teleportMaxPenalty = 5f;
 
+    [Header("AI Variability")]
+    public float feintChance = 0.25f;
+    public float dashBehindChance = 0.2f;
+    public float unpredictableMoveChance = 0.15f;
+    public float attackRhythmVariance = 0.2f;
+    private float lastAttackTime = -10f;
+
     public ActionBasedPathfinder actionPathfinder;
     private List<EnemyAction> currentActions;
     private int currentActionIndex = 0;
     private float pathRecalcTimer = 0f;
-    private float pathRecalcInterval = 1.0f; // Было 0.5f
+    private float pathRecalcInterval = 1.0f;
 
     private bool isDead = false;
     private Coroutine parryProjectileCoroutine;
@@ -112,7 +119,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 Debug.LogError("Player не найден на сцене!");
         }
         currentState = State.Pursuing;
-        isInvulnerable = true;
+        SetInvulnerable(true);
         DisableAllHitboxes();
         groundLayer = LayerMask.GetMask("Ground");
     }
@@ -136,6 +143,48 @@ public class MeleeEnemyAI : EnemyTeleportController
             needNewPath = true;
         }
 
+        // --- Вариативное и непредсказуемое поведение ---
+        if (currentState == State.Pursuing)
+        {
+            // Слишком близко — шанс уклониться за спину или отступить
+            if (distanceToPlayer < meleeAttackRange * 0.7f)
+            {
+                if (Random.value < dashBehindChance && Time.time - lastEvasionDashTime > evasionDashCooldown)
+                {
+                    StartCoroutine(DashBehindPlayerRoutine());
+                    lastEvasionDashTime = Time.time;
+                    return;
+                }
+                else if (Time.time - lastRetreatTime > retreatCooldown)
+                {
+                    StartCoroutine(RetreatDashRoutine());
+                    lastRetreatTime = Time.time;
+                    return;
+                }
+            }
+            // В зоне атаки — шанс на ложную атаку или вариативный ритм
+            else if (distanceToPlayer <= meleeAttackRange)
+            {
+                if (Random.value < feintChance)
+                {
+                    StartCoroutine(FeintAttackRoutine());
+                    return;
+                }
+                if (Time.time - lastAttackTime > meleeAttackDelay + Random.Range(-attackRhythmVariance, attackRhythmVariance))
+                {
+                    StartCoroutine(MeleeComboAttackRoutine());
+                    lastAttackTime = Time.time;
+                    return;
+                }
+            }
+            // Иногда — неожиданный манёвр (например, прыжок вбок)
+            else if (Random.value < unpredictableMoveChance)
+            {
+                StartCoroutine(UnpredictableMoveRoutine());
+                return;
+            }
+        }
+
         if (needNewPath && currentState == State.Pursuing)
         {
             pathRecalcTimer = 0f;
@@ -157,13 +206,13 @@ public class MeleeEnemyAI : EnemyTeleportController
             ExecuteAction(currentActions[currentActionIndex]);
         }
 
-        // --- Оставляем вашу логику телепорта и адаптации ---
+        // --- Умная телепортация ---
         if (IsEmergencyTeleportSituation())
-        {       
+        {
             if (!groupTeleportActive && CanTeleport())
             {
                 groupTeleportActive = true;
-                TryTeleport();
+                TrySmartTeleport();
                 StartCoroutine(ReleaseGroupTeleportFlag());
                 failedPathAttempts = 0;
                 return;
@@ -175,7 +224,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             if (!groupTeleportActive && CanTeleport())
             {
                 groupTeleportActive = true;
-                TryTeleport();
+                TrySmartTeleport();
                 StartCoroutine(ReleaseGroupTeleportFlag());
                 failedPathAttempts = 0;
                 return;
@@ -187,7 +236,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             if (CanTeleport())
             {
                 groupTeleportActive = true;
-                TryTeleport();
+                TrySmartTeleport();
                 StartCoroutine(ReleaseGroupTeleportFlag());
                 failedPathAttempts = 0;
                 return;
@@ -204,34 +253,10 @@ public class MeleeEnemyAI : EnemyTeleportController
             if (teleportTime < walkTime && !groupTeleportActive && CanTeleport())
             {
                 groupTeleportActive = true;
-                TryTeleport();
+                TrySmartTeleport();
                 StartCoroutine(ReleaseGroupTeleportFlag());
                 failedPathAttempts = 0;
                 return;
-            }
-        }
-
-        // --- Адаптивное поведение ---
-        float parryAggro = (Time.time - lastPlayerParryTime < 3f && playerParryCount > 2) ? 1f : 0f;
-        float dodgeAggro = (Time.time - lastPlayerDodgeTime < 3f && playerDodgeCount > 2) ? 1f : 0f;
-
-        // --- Атака и особые действия ---
-        if (currentState == State.Pursuing)
-        {
-            float horizontalDistance = Mathf.Abs(transform.position.x - player.position.x);
-            float verticalDistance = Mathf.Abs(transform.position.y - player.position.y);
-
-            if (distanceToPlayer <= meleeAttackRange)
-            {
-                StartCoroutine(MeleeComboAttackRoutine());
-            }
-            else if (horizontalDistance <= dashTriggerHorizDistance && verticalDistance <= dashTriggerVertDistance)
-            {
-                if (CanDash((player.position - transform.position).normalized, dashSpeed * dashDuration) &&
-                    !IsCliffInDirection((player.position - transform.position).normalized, dashSpeed * dashDuration))
-                {
-                    StartCoroutine(ChargeRoutine());
-                }
             }
         }
     }
@@ -242,9 +267,10 @@ public class MeleeEnemyAI : EnemyTeleportController
         {
             var action = currentActions[currentActionIndex];
             if (action.Type == EnemyActionType.Walk)
-            {   
+            {
                 float moveDir = Mathf.Sign(action.Direction.x);
-                Flip(moveDir);
+                if (currentState != State.Retreating)
+                    Flip(moveDir);
 
                 Vector2 targetPos = (Vector2)transform.position + action.Direction * action.Force * action.Duration;
                 rb.velocity = new Vector2(moveDir * moveSpeed, rb.velocity.y);
@@ -267,7 +293,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         switch (action.Type)
         {
             case EnemyActionType.Walk:
-                // Движение реализовано в FixedUpdate
                 break;
             case EnemyActionType.Jump:
                 if (IsGrounded())
@@ -288,7 +313,6 @@ public class MeleeEnemyAI : EnemyTeleportController
                 currentActionIndex++;
                 break;
             case EnemyActionType.AirControl:
-                // Управление в воздухе реализовано в FixedUpdate
                 break;
         }
     }
@@ -305,32 +329,138 @@ public class MeleeEnemyAI : EnemyTeleportController
 
     // --- Новые механики ---
 
+    // Вариативные манёвры
+    IEnumerator FeintAttackRoutine()
+    {
+        if (currentState != State.Pursuing)
+            yield break;
+        currentState = State.Feinting;
+        SetInvulnerable(false);
+
+        // Короткая ложная атака (анимация, звук, но без урона)
+        yield return new WaitForSeconds(0.15f + Random.Range(-0.05f, 0.1f));
+        // Быстрое уклонение после ложной атаки
+        if (Random.value < 0.7f)
+            StartCoroutine(DashBehindPlayerRoutine());
+        else
+            StartCoroutine(EvasionDashRoutine((transform.position - player.position).normalized));
+        SetInvulnerable(true);
+        currentState = State.Pursuing;
+    }
+
+    IEnumerator DashBehindPlayerRoutine()
+    {
+        currentState = State.EvasionDashing;
+        SetInvulnerable(true);
+        float timer = 0f;
+        Vector2 behindDir = (player.position.x > transform.position.x) ? Vector2.left : Vector2.right;
+        Flip(behindDir.x);
+        Vector2 dashTarget = (Vector2)player.position + behindDir * 1.2f;
+        Vector2 dashDir = (dashTarget - (Vector2)transform.position).normalized;
+        rb.linearVelocity = dashDir * evasionDashSpeed;
+        while (timer < evasionDashDuration)
+        {
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        rb.linearVelocity = Vector2.zero;
+        SetInvulnerable(false);
+        currentState = State.Pursuing;
+        lastEvasionDashTime = Time.time;
+    }
+
+    IEnumerator UnpredictableMoveRoutine()
+    {
+        currentState = State.EvasionDashing;
+        SetInvulnerable(true);
+        float timer = 0f;
+        Vector2 dir = Random.value < 0.5f ? Vector2.right : Vector2.left;
+        Flip(dir.x);
+        if (Random.value < 0.5f)
+            rb.linearVelocity = dir * evasionDashSpeed;
+        else
+            rb.linearVelocity = new Vector2(dir.x * moveSpeed, jumpForce * 0.7f);
+        while (timer < evasionDashDuration * 0.7f)
+        {
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        rb.linearVelocity = Vector2.zero;
+        SetInvulnerable(false);
+        currentState = State.Pursuing;
+    }
+
+    // --- Умная телепортация ---
+    private void TrySmartTeleport()
+    {
+        Vector2? pos = FindSmartTeleportPosition();
+        if (pos.HasValue)
+        {
+            StartCoroutine(TeleportToPositionRoutine(pos.Value));
+        }
+        else
+        {
+            TryTeleport(); // fallback
+        }
+    }
+
+    private Vector2? FindSmartTeleportPosition()
+    {
+        float[] distances = { retreatDashDistance, meleeAttackRange, meleeAttackRange * 1.5f };
+        foreach (float dist in distances)
+        {
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Vector2 offset = Vector2.right * dist * side;
+                Vector2 candidate = (Vector2)player.position + offset;
+                RaycastHit2D groundHit = Physics2D.Raycast(candidate, Vector2.down, 2f, groundLayer);
+                if (groundHit.collider != null)
+                {
+                    candidate.y = groundHit.point.y + 0.5f;
+                    if (IsPositionSafe(candidate))
+                        return candidate;
+                }
+            }
+        }
+        return null;
+    }
+
+    private IEnumerator TeleportToPositionRoutine(Vector2 pos)
+    {
+        isTeleporting = true;
+        yield return new WaitForSeconds(teleportChargeTimeNear);
+        transform.position = pos;
+        lastTeleportTime = Time.time;
+        isTeleporting = false;
+    }
+
+    private bool IsPositionSafe(Vector2 pos)
+    {
+        RaycastHit2D groundHit = Physics2D.Raycast(pos, Vector2.down, 2f, groundLayer);
+        if (groundHit.collider == null)
+            return false;
+        Collider2D wall = Physics2D.OverlapCircle(pos, 0.5f, groundLayer);
+        if (wall != null)
+            return false;
+        return true;
+    }
+
     // Тип маршрута
     private enum RouteType { Normal, StepOver, Jump, JumpAndDash, Impossible }
 
-    // Анализ маршрута к игроку
     private RouteType AnalyzeRouteToPlayer()
     {
         Vector2 dir = (player.position - transform.position).normalized;
         float dist = Vector2.Distance(transform.position, player.position);
 
-        // Step-over: небольшое препятствие
         if (IsStepOverPossible(dir))
             return RouteType.StepOver;
-
-        // Прыжок: препятствие средней высоты или пропасть
         if (IsJumpPossible(dir))
             return RouteType.Jump;
-
-        // Прыжок + рывок: широкая пропасть
         if (IsJumpAndDashPossible(dir))
             return RouteType.JumpAndDash;
-
-        // Если путь свободен
         if (IsPathClear(dir, dist))
             return RouteType.Normal;
-
-        // Если ничего не подходит — невозможно
         return RouteType.Impossible;
     }
 
@@ -349,11 +479,7 @@ public class MeleeEnemyAI : EnemyTeleportController
         Vector2 origin = (Vector2)transform.position + Vector2.up * 0.1f;
         RaycastHit2D hit = Physics2D.Raycast(origin, dir, 1.0f, groundLayer);
         if (hit.collider == null)
-        {
-            // Пропасть — можно прыгнуть
             return true;
-        }
-        // Высокая стена — нельзя перепрыгнуть
         return false;
     }
 
@@ -384,7 +510,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         return hit.collider != null;
     }
 
-    // Проверка нештатных ситуаций (например, враг падает в пропасть)
     private bool IsEmergencyTeleportSituation()
     {
         if (!IsGrounded())
@@ -396,15 +521,11 @@ public class MeleeEnemyAI : EnemyTeleportController
         return false;
     }
 
-    // Получить базовое время телепорта (можно доработать под разные типы телепорта)
     private float GetTeleportBaseTime(float distance)
     {
-        // Можно использовать teleportChargeTimeFar/teleportChargeTimeNear из EnemyTeleportController
-        // Здесь для простоты — 0.5f
         return 0.5f;
     }
 
-    // Штраф за телепорт на близкой дистанции
     private float GetTeleportPenalty(float distance)
     {
         if (distance >= teleportCompareDistance)
@@ -413,7 +534,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         return Mathf.Lerp(teleportMinPenalty, teleportMaxPenalty, t);
     }
 
-    // Step-over
     private IEnumerator StepOverRoutine()
     {
         currentState = State.StepOver;
@@ -427,7 +547,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.Pursuing;
     }
 
-    // Прыжок
     private IEnumerator JumpRoutine()
     {
         currentState = State.Jumping;
@@ -436,7 +555,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.Pursuing;
     }
 
-    // Прыжок + рывок
     private IEnumerator JumpAndDashRoutine()
     {
         currentState = State.Jumping;
@@ -447,8 +565,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.Pursuing;
     }
 
-    // --- Остальные методы (атаки, рывки, телепорт, память, адаптация) ---
-    // Групповая логика: сбросить флаг телепорта через короткое время
     private IEnumerator ReleaseGroupTeleportFlag()
     {
         yield return new WaitForSeconds(1.5f);
@@ -460,21 +576,19 @@ public class MeleeEnemyAI : EnemyTeleportController
         if (currentState != State.Pursuing)
             yield break;
         currentState = State.MeleeComboAttacking;
-        isInvulnerable = false;
+        SetInvulnerable(false);
 
         for (int i = 0; i < meleeComboCount; i++)
         {
-            float cancelWindow = 0.2f; // окно отмены
+            float cancelWindow = 0.2f + Random.Range(-0.1f, 0.1f);
             float timer = 0f;
-            bool canCancel = true;
-            // Окно отмены
             while (timer < cancelWindow)
             {
                 float distanceToPlayer = Vector2.Distance(transform.position, player.position);
                 if (distanceToPlayer > meleeAttackRange)
                 {
                     currentState = State.Pursuing;
-                    isInvulnerable = true;
+                    SetInvulnerable(true);
                     DisableAllHitboxes();
                     yield break;
                 }
@@ -482,40 +596,50 @@ public class MeleeEnemyAI : EnemyTeleportController
                 if (parryHitbox != null && parryHitbox.IsParrying)
                 {
                     currentState = State.Pursuing;
-                    isInvulnerable = true;
+                    SetInvulnerable(true);
+                    DisableAllHitboxes();
+                    yield break;
+                }
+                // Вариативный шанс прервать атаку и уклониться
+                if (Random.value < 0.1f && Time.time - lastEvasionDashTime > evasionDashCooldown)
+                {
+                    StartCoroutine(DashBehindPlayerRoutine());
+                    lastEvasionDashTime = Time.time;
+                    currentState = State.Pursuing;
+                    SetInvulnerable(true);
                     DisableAllHitboxes();
                     yield break;
                 }
                 timer += Time.deltaTime;
                 yield return null;
             }
-            // После окна отмены атака всегда завершается
 
             if (parryProjectileCoroutine != null)
                 StopCoroutine(parryProjectileCoroutine);
             parryProjectileCoroutine = StartCoroutine(ParryProjectileWindow(0.2f));
 
-            yield return new WaitForSeconds(meleeAttackDelay);
+            yield return new WaitForSeconds(meleeAttackDelay + Random.Range(-0.1f, 0.1f));
 
             if (currentState == State.Stunned || isDead)
                 yield break;
 
             EnableComboHitbox(i);
-            yield return new WaitForSeconds(0.15f);
+            yield return new WaitForSeconds(0.15f + Random.Range(-0.05f, 0.05f));
             DisableComboHitbox(i);
 
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(0.1f + Random.Range(-0.05f, 0.05f));
         }
 
-        isInvulnerable = true;
+        SetInvulnerable(true);
         currentState = State.Pursuing;
     }
 
     IEnumerator EvasionDashRoutine(Vector2 direction)
     {
         currentState = State.EvasionDashing;
-        isInvulnerable = true;
+        SetInvulnerable(true);
         float timer = 0f;
+        Flip(direction.x);
         rb.linearVelocity = direction.normalized * evasionDashSpeed;
         while (timer < evasionDashDuration)
         {
@@ -523,7 +647,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             yield return null;
         }
         rb.linearVelocity = Vector2.zero;
-        isInvulnerable = false;
+        SetInvulnerable(false);
         currentState = State.Pursuing;
         lastEvasionDashTime = Time.time;
     }
@@ -531,8 +655,9 @@ public class MeleeEnemyAI : EnemyTeleportController
     IEnumerator RetreatDashRoutine()
     {
         currentState = State.Retreating;
-        isInvulnerable = false;
+        SetInvulnerable(false);
         float direction = Mathf.Sign(transform.position.x - player.position.x);
+        Flip(direction);
         float timer = 0f;
         rb.linearVelocity = new Vector2(direction * retreatDashSpeed, 0f);
         while (timer < retreatDashDuration)
@@ -543,6 +668,7 @@ public class MeleeEnemyAI : EnemyTeleportController
         rb.linearVelocity = Vector2.zero;
         lastRetreatTime = Time.time;
         currentState = State.Pursuing;
+        SetInvulnerable(true);
     }
 
     IEnumerator ParryProjectileWindow(float duration)
@@ -574,7 +700,7 @@ public class MeleeEnemyAI : EnemyTeleportController
         {
             StopAllCoroutines();
             currentState = State.Stunned;
-            isInvulnerable = false;
+            SetInvulnerable(false);
             rb.linearVelocity = Vector2.zero;
             DisableAllHitboxes();
             StartCoroutine(StunnedRoutine());
@@ -608,7 +734,7 @@ public class MeleeEnemyAI : EnemyTeleportController
         if (!CanDash((player.position - transform.position).normalized, dashSpeed * dashDuration))
         {
             currentState = State.Pursuing;
-            isInvulnerable = true;
+            SetInvulnerable(true);
             if (parryProjectileHitbox != null)
                 parryProjectileHitbox.SetActive(false);
             yield break;
@@ -617,15 +743,14 @@ public class MeleeEnemyAI : EnemyTeleportController
         if (currentState != State.Pursuing)
             yield break;
         currentState = State.Charging;
-        isInvulnerable = false;
+        SetInvulnerable(false);
 
         if (parryProjectileCoroutine != null)
             StopCoroutine(parryProjectileCoroutine);
         parryProjectileCoroutine = StartCoroutine(ParryProjectileWindow(0.2f));
 
-        float cancelWindow = 0.2f; // окно отмены
+        float cancelWindow = 0.2f;
         float timer = 0f;
-        // Окно отмены
         while (timer < cancelWindow)
         {
             float horizontalDistance = Mathf.Abs(transform.position.x - player.position.x);
@@ -633,7 +758,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             if (horizontalDistance > dashTriggerHorizDistance || verticalDistance > dashTriggerVertDistance)
             {
                 currentState = State.Pursuing;
-                isInvulnerable = true;
+                SetInvulnerable(true);
                 if (parryProjectileHitbox != null)
                     parryProjectileHitbox.SetActive(false);
                 yield break;
@@ -642,7 +767,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             if (parryHitbox != null && parryHitbox.IsParrying)
             {
                 currentState = State.Pursuing;
-                isInvulnerable = true;
+                SetInvulnerable(true);
                 if (parryProjectileHitbox != null)
                     parryProjectileHitbox.SetActive(false);
                 yield break;
@@ -650,7 +775,6 @@ public class MeleeEnemyAI : EnemyTeleportController
             timer += Time.deltaTime;
             yield return null;
         }
-        // После окна отмены атака всегда совершается
 
         yield return new WaitForSeconds(chargeTime - cancelWindow);
         StartCoroutine(DashRoutine());
@@ -659,12 +783,13 @@ public class MeleeEnemyAI : EnemyTeleportController
     IEnumerator DashRoutine()
     {
         currentState = State.Dashing;
-        isInvulnerable = true;
+        SetInvulnerable(true);
 
         if (dashAttackHitbox != null)
             dashAttackHitbox.SetActive(true);
 
         Vector2 dashDirection = ((Vector2)player.position - rb.position).normalized;
+        Flip(dashDirection.x);
         float timer = 0f;
         rb.linearVelocity = dashDirection * dashSpeed;
         while (timer < dashDuration)
@@ -683,17 +808,17 @@ public class MeleeEnemyAI : EnemyTeleportController
     IEnumerator RecoveryRoutine()
     {
         currentState = State.Recovery;
-        isInvulnerable = false;
+        SetInvulnerable(false);
         yield return new WaitForSeconds(recoveryTime);
         currentState = State.Pursuing;
-        isInvulnerable = true;
+        SetInvulnerable(true);
     }
 
     IEnumerator StunnedRoutine()
     {
         yield return new WaitForSeconds(stunnedTime);
         currentState = State.Pursuing;
-        isInvulnerable = true;
+        SetInvulnerable(true);
     }
 
     public void TakeDamage()
@@ -712,49 +837,41 @@ public class MeleeEnemyAI : EnemyTeleportController
     {
         if (isDead) return;
 
-        bool isParry = false;
-
-        if (collision.CompareTag("PlayerAttack"))
+        // Неуязвимость: парируем только если не в атаке/рывке/оглушении/уклонении/отступлении
+        if (isInvulnerable && !IsDashingOrAttacking() && currentState != State.EvasionDashing && currentState != State.Retreating)
         {
-            if (isInvulnerable)
+            if (collision.CompareTag("PlayerAttack") || collision.CompareTag("DashAttack"))
             {
                 TryParry(collision.transform.position);
-                isParry = true;
+                return;
             }
-            else
-            {
-                TakeDamage();
-            }
-        }
-        else if (collision.CompareTag("DashAttack"))
-        {
-            if (isInvulnerable)
-            {
-                BlockAttack(collision.transform.position);
-                isParry = true;
-            }
-            else
-            {
-                TakeDamage();
-            }
-        }
-        else
-        {
             var proj = collision.GetComponent<Projectile>();
             if (proj != null && proj.isReflected)
             {
-                if (isInvulnerable)
-                {
-                    BlockAttack(collision.transform.position);
-                    isParry = true;
-                }
-                else
-                {
-                    TakeDamage();
-                }
+                TryParry(collision.transform.position);
+                return;
             }
         }
-        // Здесь можно добавить вызов анимации парирования, если isParry == true
+        // Во время рывка/уклонения/отступления — просто игнорируем урон, не парируем
+        else if (isInvulnerable)
+        {
+            return;
+        }
+        // В остальных случаях — получаем урон
+        else
+        {
+            if (collision.CompareTag("PlayerAttack") || collision.CompareTag("DashAttack"))
+            {
+                TakeDamage();
+                return;
+            }
+            var proj = collision.GetComponent<Projectile>();
+            if (proj != null && proj.isReflected)
+            {
+                TakeDamage();
+                return;
+            }
+        }
     }
 
     private void OnAttackHitboxTriggerEnter2D(Collider2D collision)
@@ -765,7 +882,14 @@ public class MeleeEnemyAI : EnemyTeleportController
             var parry = collision.GetComponent<ParryHitbox>();
             if (parry != null && parry.IsParrying)
             {
-                // ... оглушение и отброс врага
+                StopAllCoroutines();
+                currentState = State.Stunned;
+                SetInvulnerable(false);
+                rb.linearVelocity = new Vector2(-Mathf.Sign(transform.position.x - player.position.x) * 5f, 3f);
+                DisableAllHitboxes();
+                StartCoroutine(StunnedRoutine());
+                playerParryCount++;
+                lastPlayerParryTime = Time.time;
                 return;
             }
 
@@ -831,7 +955,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         if (comboAttackHitboxes != null && index < comboAttackHitboxes.Length && comboAttackHitboxes[index] != null)
             comboAttackHitboxes[index].SetActive(true);
     }
-
 
     private void DisableComboHitbox(int index)
     {
