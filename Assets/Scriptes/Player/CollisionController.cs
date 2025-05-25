@@ -40,16 +40,15 @@ public class CollisionController : MonoBehaviour
     public bool IsGrounded { get; private set; }
     public bool IsTouchingWall { get; private set; }
 
-    // Ссылка для расчётов используется BoxCollider2D, настроенный в редакторе.
-    // Если вы используете динамический хитбокс через DynamicSpriteCollider, то у вас может быть
-    // PolygonCollider2D вместо BoxCollider2D, но для проверки (например, OverlapBox) можно оставить
-    // BoxCollider2D или задать отдельные параметры.
+    // Ссылки для расчётов используются BoxCollider2D и PolygonCollider2D.
     private BoxCollider2D boxCollider;
+    private PolygonCollider2D polyCollider;
 
     void Start()
     {
-        // Получаем BoxCollider2D только для расчётов методами проверки столкновений.
+        // Получаем BoxCollider2D и PolygonCollider2D только для расчётов методами проверки столкновений.
         boxCollider = GetComponent<BoxCollider2D>();
+        polyCollider = GetComponent<PolygonCollider2D>();
     }
 
     void Update()
@@ -83,48 +82,87 @@ public class CollisionController : MonoBehaviour
 
     bool CheckFullWallContact()
     {
-        // Вычисляем мировую позицию с учётом modelCenterOffset.
-        Vector2 pos = (Vector2)transform.position +
-                      new Vector2(
-                          ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
-                          modelCenterOffset.y);
-
-        // Определяем offset и размер для проверки – либо кастомные, либо из BoxCollider2D.
-        Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : boxCollider.offset;
-        Vector2 size = overrideWallCheckCollider ? customWallCheckSize : boxCollider.size;
-        Vector2 halfSize = size * 0.5f;
-
-        bool facingRight = ignoreFlipForWallChecks ? true : (transform.localScale.x >= 0);
-
-        // Вычисляем контрольные точки для лицевой и задней сторон хитбокса.
-        Vector2 frontTop, frontBottom, backTop, backBottom;
-        if (facingRight)
+        // Если есть BoxCollider2D — используем старую логику
+        if (boxCollider != null)
         {
-            frontTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
-            frontBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
-            backTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
-            backBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
+            Vector2 pos = (Vector2)transform.position +
+                          new Vector2(
+                              ignoreFlipForWallChecks ? modelCenterOffset.x : (transform.localScale.x >= 0 ? modelCenterOffset.x : -modelCenterOffset.x),
+                              modelCenterOffset.y);
+
+            Vector2 offset = overrideWallCheckCollider ? customWallCheckOffset : boxCollider.offset;
+            Vector2 size = overrideWallCheckCollider ? customWallCheckSize : boxCollider.size;
+            Vector2 halfSize = size * 0.5f;
+
+            bool facingRight = ignoreFlipForWallChecks ? true : (transform.localScale.x >= 0);
+
+            // Вычисляем контрольные точки для лицевой и задней сторон хитбокса.
+            Vector2 frontTop, frontBottom, backTop, backBottom;
+            if (facingRight)
+            {
+                frontTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
+                frontBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
+                backTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
+                backBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
+            }
+            else
+            {
+                frontTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
+                frontBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
+                backTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
+                backBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
+            }
+
+            bool frontFull = Physics2D.OverlapPoint(frontTop, wallLayer) && Physics2D.OverlapPoint(frontBottom, wallLayer);
+            bool backFull = Physics2D.OverlapPoint(backTop, wallLayer) && Physics2D.OverlapPoint(backBottom, wallLayer);
+
+            if (frontFull)
+            {
+                lastWallContactSide = facingRight ? 1 : -1;
+                return true;
+            }
+            else if (backFull)
+            {
+                lastWallContactSide = facingRight ? -1 : 1;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
-        else
+        // Если BoxCollider2D нет, но есть PolygonCollider2D — используем его bounds
+        else if (polyCollider != null)
         {
-            frontTop = pos + offset + new Vector2(-halfSize.x, halfSize.y);
-            frontBottom = pos + offset + new Vector2(-halfSize.x, -halfSize.y);
-            backTop = pos + offset + new Vector2(halfSize.x, halfSize.y);
-            backBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
-        }
+            Bounds bounds = polyCollider.bounds;
+            float sideOffset = bounds.extents.x * 0.95f;
+            float top = bounds.max.y - 0.01f;
+            float bottom = bounds.min.y + 0.01f;
+            Vector2 pos = (Vector2)transform.position;
 
-        bool frontFull = Physics2D.OverlapPoint(frontTop, wallLayer) && Physics2D.OverlapPoint(frontBottom, wallLayer);
-        bool backFull = Physics2D.OverlapPoint(backTop, wallLayer) && Physics2D.OverlapPoint(backBottom, wallLayer);
+            // Проверяем точки по бокам полигона
+            Vector2 rightTop = new Vector2(bounds.center.x + sideOffset, top);
+            Vector2 rightBottom = new Vector2(bounds.center.x + sideOffset, bottom);
+            Vector2 leftTop = new Vector2(bounds.center.x - sideOffset, top);
+            Vector2 leftBottom = new Vector2(bounds.center.x - sideOffset, bottom);
 
-        if (frontFull)
-        {
-            lastWallContactSide = facingRight ? 1 : -1;
-            return true;
-        }
-        else if (backFull)
-        {
-            lastWallContactSide = facingRight ? -1 : 1;
-            return true;
+            bool rightFull = Physics2D.OverlapPoint(rightTop, wallLayer) && Physics2D.OverlapPoint(rightBottom, wallLayer);
+            bool leftFull = Physics2D.OverlapPoint(leftTop, wallLayer) && Physics2D.OverlapPoint(leftBottom, wallLayer);
+
+            if (rightFull)
+            {
+                lastWallContactSide = 1;
+                return true;
+            }
+            else if (leftFull)
+            {
+                lastWallContactSide = -1;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
         else
         {
