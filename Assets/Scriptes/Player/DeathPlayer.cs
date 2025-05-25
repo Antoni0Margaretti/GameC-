@@ -4,11 +4,18 @@ public class PlayerDeath : MonoBehaviour
 {
     private bool isDead = false;
 
+    public GameObject deathScreenPrefab; // Привяжите Canvas DeathScreen в инспекторе
+
     public void Die()
     {
         if (isDead) return;
         isDead = true;
-        // Здесь можно добавить анимацию смерти, эффекты, перезапуск уровня и т.д.
+
+        if (deathScreenPrefab != null)
+        {
+            Instantiate(deathScreenPrefab);
+        }
+        // Можно добавить анимацию смерти, остановку времени и т.д.
         Destroy(gameObject);
     }
 }
