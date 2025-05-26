@@ -36,6 +36,12 @@ public class MeleeEnemyAI : EnemyTeleportController
     public float dashCooldown = 1.2f;
     private float lastDashTime = -10f;
 
+    [Header("Dash Attack Settings")]
+    public float dashAttackWindup = 0.22f; // задержка перед рывком
+    public float dashAttackActive = 0.18f; // длительность самой атаки
+    public float dashAttackCooldown = 2.0f;
+    private float lastDashAttackTime = -10f;
+
     [Header("Evasion Settings")]
     public float evasionDashSpeed = 13f;
     public float evasionDashDuration = 0.13f;
@@ -72,6 +78,9 @@ public class MeleeEnemyAI : EnemyTeleportController
     public float parryKnockbackForce = 8f;
     public float stunnedTime = 1.1f;
 
+    public GameObject exclamationPrefab;
+    private GameObject exclamationInstance;
+
     private bool isDead = false;
     private bool isInvulnerable = true;
     private bool facingRight = true;
@@ -103,6 +112,16 @@ public class MeleeEnemyAI : EnemyTeleportController
         if (ShouldTeleport(distanceToPlayer))
         {
             TryTeleportSmart();
+            return;
+        }
+
+        // --- Dash-атака, если рядом и кулдаун ---
+        if (currentState == State.Pursuing && distanceToPlayer < meleeAttackRange * 1.1f
+            && Time.time - lastDashAttackTime > dashAttackCooldown
+            && Random.value < 0.25f) // шанс для разнообразия
+        {
+            StartCoroutine(DashAttackRoutine());
+            lastDashAttackTime = Time.time;
             return;
         }
 
@@ -226,8 +245,15 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.MeleeComboAttacking;
         SetInvulnerable(false);
 
+        ShowExclamation(); // Показать сигнал
+
         // Всегда поворачиваемся к игроку перед атакой
         Flip(Mathf.Sign(player.position.x - transform.position.x));
+
+        // ... замах ...
+        yield return new WaitForSeconds(0.25f);
+
+        HideExclamation(); // Скрыть сигнал
 
         for (int i = 0; i < meleeComboCount; i++)
         {
@@ -272,6 +298,36 @@ public class MeleeEnemyAI : EnemyTeleportController
         }
 
         SetInvulnerable(true);
+        currentState = State.Pursuing;
+    }
+
+    IEnumerator DashAttackRoutine()
+    {
+        if (currentState != State.Pursuing) yield break;
+        currentState = State.Dashing;
+        SetInvulnerable(true);
+
+        // Сигнал игроку
+        ShowExclamation();
+        // Замах
+        yield return new WaitForSeconds(dashAttackWindup);
+        HideExclamation();
+
+        // Рывок к игроку
+        float dir = Mathf.Sign(player.position.x - transform.position.x);
+        Flip(dir);
+        if (dashAttackHitbox != null)
+            dashAttackHitbox.SetActive(true);
+
+        rb.linearVelocity = new Vector2(dir * dashSpeed, 0f);
+
+        yield return new WaitForSeconds(dashAttackActive);
+
+        rb.linearVelocity = Vector2.zero;
+        if (dashAttackHitbox != null)
+            dashAttackHitbox.SetActive(false);
+
+        SetInvulnerable(false);
         currentState = State.Pursuing;
     }
 
@@ -621,5 +677,22 @@ public class MeleeEnemyAI : EnemyTeleportController
     private bool IsDashingOrAttacking()
     {
         return currentState == State.Dashing || currentState == State.MeleeComboAttacking;
+    }
+
+    private void ShowExclamation()
+    {
+        if (exclamationPrefab != null && exclamationInstance == null)
+        {
+            exclamationInstance = Instantiate(exclamationPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity, transform);
+        }
+    }
+
+    private void HideExclamation()
+    {
+        if (exclamationInstance != null)
+        {
+            Destroy(exclamationInstance);
+            exclamationInstance = null;
+        }
     }
 }

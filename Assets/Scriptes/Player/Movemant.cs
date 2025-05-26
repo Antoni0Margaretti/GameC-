@@ -359,7 +359,7 @@ public class PlayerController : MonoBehaviour
     private IEnumerator DashWithWindup()
     {
         isDashWindup = true;
-        rb.velocity = Vector2.zero; // игрок не двигается во время замаха
+        rb.linearVelocity = Vector2.zero; // игрок не двигается во время замаха
         float timer = 0f;
         while (timer < dashWindupTime)
         {

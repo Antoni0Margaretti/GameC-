@@ -70,6 +70,25 @@ public class RangedEnemyAI : EnemyTeleportController
     private float lastAggroCheckTime = 0f;
     private float aggroCheckInterval = 2f;
 
+    public GameObject exclamationPrefab;
+    private GameObject exclamationInstance;
+
+    private void ShowExclamation()
+    {
+        if (exclamationPrefab != null && exclamationInstance == null)
+        {
+            exclamationInstance = Instantiate(exclamationPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity, transform);
+        }
+    }
+
+    private void HideExclamation()
+    {
+        if (exclamationInstance != null)
+        {
+            Destroy(exclamationInstance);
+            exclamationInstance = null;
+        }
+    }
 
     void Start()
     {
@@ -474,7 +493,10 @@ public class RangedEnemyAI : EnemyTeleportController
             yield break;
 
         currentState = State.Aiming;
+        ShowExclamation(); // Показать сигнал
         yield return new WaitForSeconds(aimTime);
+        HideExclamation(); // Скрыть сигнал
+
         if (CheckVisualContact() && IsInAttackRange())
             currentState = State.Shooting;
         else
