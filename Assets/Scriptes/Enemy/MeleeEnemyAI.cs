@@ -2,7 +2,6 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-/// <summary>
 /// Интеллект ближнего врага: умный, адаптивный, с вариативным боем, но без сложного pathfinding.
 /// Враг:
 /// - Всегда знает где игрок.
@@ -10,7 +9,6 @@ using System.Collections.Generic;
 /// - Вблизи действует агрессивно и непредсказуемо: комбо, ложные атаки, рывки, уклонения, отступления.
 /// - Реагирует на парирование.
 /// - Не использует ActionBasedPathfinder, но умеет прыгать через препятствия и "шагать" через низкие.
-/// </summary>
 public class MeleeEnemyAI : EnemyTeleportController
 {
     private enum State
@@ -107,6 +105,14 @@ public class MeleeEnemyAI : EnemyTeleportController
         if (isDead || player == null || isTeleporting || currentState == State.Dead) return;
 
         float distanceToPlayer = Vector2.Distance(transform.position, player.position);
+        var playerCombat = player.GetComponent<CombatController>();
+
+        // --- Реакция на подготовку атаки игрока ---
+        if (playerCombat != null && playerCombat.IsAttackWindup && currentState == State.Pursuing)
+        {
+            ReactToPlayerAttackWindup(distanceToPlayer);
+            return;
+        }
 
         // --- Телепорт, если далеко или застрял ---
         if (ShouldTeleport(distanceToPlayer))
@@ -115,72 +121,118 @@ public class MeleeEnemyAI : EnemyTeleportController
             return;
         }
 
-        // --- Dash-атака, если рядом и кулдаун ---
-        if (currentState == State.Pursuing && distanceToPlayer < meleeAttackRange * 1.1f
-            && Time.time - lastDashAttackTime > dashAttackCooldown
-            && Random.value < 0.25f) // шанс для разнообразия
+        // --- Если игрок далеко, подходим на дистанцию dash-атаки ---
+        if (distanceToPlayer > meleeAttackRange * 1.1f)
+        {
+            if (distanceToPlayer < detectionRadius)
+            {
+                if (CanDashAttack(distanceToPlayer))
+                {
+                    StartCoroutine(DashAttackRoutine());
+                    lastDashAttackTime = Time.time;
+                    return;
+                }
+                MoveTowardsPlayer();
+            }
+            return;
+        }
+
+        // --- Если игрок в радиусе dash-атаки, делаем dash-атаку ---
+        if (CanDashAttack(distanceToPlayer))
         {
             StartCoroutine(DashAttackRoutine());
             lastDashAttackTime = Time.time;
             return;
         }
 
-        // --- Простое движение к игроку, если не очень далеко ---
-        if (currentState == State.Pursuing && distanceToPlayer > meleeAttackRange + 0.2f)
+        // --- Если игрок в радиусе обычной атаки, делаем комбо ---
+        if (distanceToPlayer <= meleeAttackRange)
         {
-            if (IsObstacleAhead())
+            if (Random.value < feintChance)
             {
-                if (CanStepOver())
-                {
-                    StartCoroutine(StepOverRoutine());
-                    return;
-                }
-                else if (CanJump())
-                {
-                    StartCoroutine(JumpRoutine());
-                    return;
-                }
+                StartCoroutine(FeintAttackRoutine());
+                return;
             }
-            MoveTowardsPlayer();
-            return;
+            if (Time.time - lastAttackTime > meleeAttackDelay + Random.Range(-attackRhythmVariance, attackRhythmVariance))
+            {
+                StartCoroutine(MeleeComboAttackRoutine());
+                lastAttackTime = Time.time;
+                return;
+            }
         }
 
-        // --- Вариативное поведение вблизи ---
-        if (currentState == State.Pursuing)
+        // --- Если игрок слишком близко, делаем уклоняющийся или отступающий рывок ---
+        if (distanceToPlayer < meleeAttackRange * 0.7f)
         {
-            if (distanceToPlayer < meleeAttackRange * 0.7f)
+            if (CanDashBehind())
             {
-                if (Random.value < dashBehindChance && Time.time - lastEvasionTime > evasionDashCooldown)
-                {
-                    StartCoroutine(DashBehindPlayerRoutine());
-                    lastEvasionTime = Time.time;
-                    return;
-                }
-                else if (Time.time - lastRetreatTime > retreatCooldown)
-                {
-                    StartCoroutine(RetreatDashRoutine());
-                    lastRetreatTime = Time.time;
-                    return;
-                }
-            }
-            else if (distanceToPlayer <= meleeAttackRange)
-            {
-                if (Random.value < feintChance)
-                {
-                    StartCoroutine(FeintAttackRoutine());
-                    return;
-                }
-                if (Time.time - lastAttackTime > meleeAttackDelay + Random.Range(-attackRhythmVariance, attackRhythmVariance))
-                {
-                    StartCoroutine(MeleeComboAttackRoutine());
-                    lastAttackTime = Time.time;
-                    return;
-                }
-            }
-            else if (Random.value < unpredictableMoveChance)
-            {
-                StartCoroutine(UnpredictableMoveRoutine());
+                StartCoroutine(DashBehindPlayerRoutine());
+                lastEvasionTime = Time.time;
                 return;
+            }
+            else if (CanRetreat())
+            {
+                StartCoroutine(RetreatDashRoutine());
+                lastRetreatTime = Time.time;
+                return;
+            }
+        }
+
+        // --- Немного хаоса: неожиданные манёвры ---
+        if (Random.value < unpredictableMoveChance)
+        {
+            StartCoroutine(UnpredictableMoveRoutine());
+            return;
+        }
+    }
+
+    private bool CanDashAttack(float distanceToPlayer)
+    {
+        return currentState == State.Pursuing
+            && distanceToPlayer < meleeAttackRange * 1.1f
+            && Time.time - lastDashAttackTime > dashAttackCooldown;
+    }
+
+    private bool CanDashBehind()
+    {
+        return Random.value < 0.6f && Time.time - lastEvasionTime > evasionDashCooldown;
+    }
+
+    private bool CanRetreat()
+    {
+        return Time.time - lastRetreatTime > retreatCooldown;
+    }
+
+    private void ReactToPlayerAttackWindup(float distanceToPlayer)
+    {
+        // Приоритет: парирование > уклонение > отступление
+        float r = Random.value;
+        if (distanceToPlayer <= meleeAttackRange && r < 0.5f)
+        {
+            // Парировать
+            StartCoroutine(ParryProjectileWindow(0.25f));
+        }
+        else if (distanceToPlayer < meleeAttackRange * 0.7f && r < 0.8f)
+        {
+            // Уклоняющийся рывок
+            if (CanDashBehind())
+            {
+                StartCoroutine(DashBehindPlayerRoutine());
+                lastEvasionTime = Time.time;
+            }
+            else if (CanRetreat())
+            {
+                StartCoroutine(RetreatDashRoutine());
+                lastRetreatTime = Time.time;
+            }
+        }
+        else
+        {
+            // Просто отступить
+            if (CanRetreat())
+            {
+                StartCoroutine(RetreatDashRoutine());
+                lastRetreatTime = Time.time;
             }
         }
     }
