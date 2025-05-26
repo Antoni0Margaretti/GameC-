@@ -7,10 +7,14 @@ public class CombatController : MonoBehaviour
     public int maxCombo = 3;
     public float comboResetTime = 1.0f;
     public GameObject[] comboAttackHitboxes;
+    public float[] attackWindupTimes = { 0.18f, 0.22f, 0.25f }; // индивидуальный замах для каждого удара
+    public float[] attackActiveTimes = { 0.3f, 0.32f, 0.35f };  // длительность самой атаки
 
     private int currentCombo = 0;
     private float comboTimer = 0f;
     private bool isAttacking = false;
+    private bool isAttackWindup = false;
+    private Coroutine attackCoroutine;
 
     [Header("Parry Settings")]
     public float parryDuration = 0.5f;
@@ -69,54 +73,70 @@ public class CombatController : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyBindings.Attack))
         {
-            // Нельзя атаковать в присяде, подкате, рывке
+            // Нельзя атаковать в присяде, подкате, рывке, на краю
             if (isCrouching || isSliding || isDashing || isLedgeClimbing)
                 return;
 
-            // Если висим на стене или лезем по краю — отцепляемся и атакуем
-            if (isLedgeClimbing || isWallAttached)
+            // Если висим на стене — отцепляемся и начинаем замах
+            if (isWallAttached)
             {
                 DetachFromWall();
-                // Сбросить флаг isWallAttached, чтобы Movemant.cs знал, что нужно отцепиться
             }
 
-            if (!isAttacking && !isParrying && !isDashAttacking)
-                StartCoroutine(PerformAttackCombo());
+            if (!isAttacking && !isParrying && !isDashAttacking && !isAttackWindup)
+            {
+                attackCoroutine = StartCoroutine(AttackComboWithWindup());
+            }
         }
     }
 
-    IEnumerator PerformAttackCombo()
+    IEnumerator AttackComboWithWindup()
     {
-        isAttacking = true;
-        comboTimer = 0f;
-        currentCombo = 1;
-        ActivateAttackHitboxForCombo(currentCombo);
-        yield return new WaitForSeconds(0.3f);
-        DeactivateAttackHitboxForCombo(currentCombo);
-
-        float timer = 0f;
-        bool nextAttackQueued = false;
-        while (timer < comboResetTime)
+        isAttackWindup = true;
+        int comboIndex = 0;
+        while (comboIndex < maxCombo)
         {
-            if (Input.GetMouseButtonDown(0))
+            // --- Замах ---
+            float windup = attackWindupTimes.Length > comboIndex ? attackWindupTimes[comboIndex] : 0.2f;
+            float windupTimer = 0f;
+            while (windupTimer < windup)
             {
-                nextAttackQueued = true;
-                break;
+                // Если игрок начал dash, slide, crouch, wall hang — прерываем замах
+                if (isCrouching || isSliding || isDashing || isLedgeClimbing || isWallAttached)
+                {
+                    isAttackWindup = false;
+                    yield break;
+                }
+                windupTimer += Time.deltaTime;
+                yield return null;
             }
-            timer += Time.deltaTime;
-            yield return null;
-        }
+            isAttackWindup = false;
 
-        while (nextAttackQueued && currentCombo < maxCombo)
-        {
-            currentCombo++;
+            // --- Атака ---
+            isAttacking = true;
             comboTimer = 0f;
+            currentCombo = comboIndex + 1;
             ActivateAttackHitboxForCombo(currentCombo);
-            yield return new WaitForSeconds(0.3f);
+
+            float activeTime = attackActiveTimes.Length > comboIndex ? attackActiveTimes[comboIndex] : 0.3f;
+            float attackTimer = 0f;
+            while (attackTimer < activeTime)
+            {
+                // Если игрок начал dash, slide, crouch, wall hang — прерываем атаку
+                if (isCrouching || isSliding || isDashing || isLedgeClimbing || isWallAttached)
+                {
+                    DeactivateAttackHitboxForCombo(currentCombo);
+                    ResetCombo();
+                    yield break;
+                }
+                attackTimer += Time.deltaTime;
+                yield return null;
+            }
             DeactivateAttackHitboxForCombo(currentCombo);
 
-            nextAttackQueued = false;
-            timer = 0f;
+            // Ожидание ввода для следующей атаки
+            float timer = 0f;
+            bool nextAttackQueued = false;
             while (timer < comboResetTime)
             {
                 if (Input.GetMouseButtonDown(0))
@@ -124,11 +144,19 @@ public class CombatController : MonoBehaviour
                     nextAttackQueued = true;
                     break;
                 }
+                // Прерывание комбо, если игрок начал запрещённое действие
+                if (isCrouching || isSliding || isDashing || isLedgeClimbing || isWallAttached)
+                {
+                    ResetCombo();
+                    yield break;
+                }
                 timer += Time.deltaTime;
                 yield return null;
             }
+            if (!nextAttackQueued)
+                break;
+            comboIndex++;
         }
-
         ResetCombo();
     }
 
@@ -147,11 +175,14 @@ public class CombatController : MonoBehaviour
     void ResetCombo()
     {
         isAttacking = false;
+        isAttackWindup = false;
         currentCombo = 0;
         comboTimer = 0f;
         if (comboAttackHitboxes != null)
             foreach (var hitbox in comboAttackHitboxes)
                 if (hitbox != null) hitbox.SetActive(false);
+        if (attackCoroutine != null)
+            StopCoroutine(attackCoroutine);
     }
 
     void HandleParryInput()

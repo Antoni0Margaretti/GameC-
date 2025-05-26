@@ -26,12 +26,15 @@ public class PlayerController : MonoBehaviour
     public float dashDistance = 5f;
     public float dashSpeed = 20f;
     public float dashCooldown = 1f;
-    private bool canDash = true;
+    private bool canDash = true;   
     public bool isInvulnerable = false;
     private bool isDashing = false;
     public float dashAfterLockDuration = 0.2f;
     private bool isDashLocked = false;
     public float dashImpulseRetention = 0.2f;
+    private Coroutine dashCoroutine;
+    private bool isDashWindup = false;
+    public float dashWindupTime = 0.15f; // задержка перед рывком
 
     // --- Подкат и присед
     [Header("Slide & Crouch")]
@@ -338,19 +341,39 @@ public class PlayerController : MonoBehaviour
     // --- Рывок (Dash) ---
     private void HandleDash()
     {
-        if (Input.GetKeyDown(KeyBindings.Dash) && canDash && !isSliding && !isCrouching)
+        if (Input.GetKeyDown(KeyBindings.Dash) && canDash && !isSliding && !isCrouching && !isDashWindup && !isDashing)
         {
             if (isSlidingOnWall)
             {
                 if ((collisionController.GetLastWallContactSide() == 1 && !facingRight) ||
                     (collisionController.GetLastWallContactSide() == -1 && facingRight))
-                    StartCoroutine(Dash());
+                    dashCoroutine = StartCoroutine(DashWithWindup());
             }
             else
             {
-                StartCoroutine(Dash());
+                dashCoroutine = StartCoroutine(DashWithWindup());
             }
         }
+    }
+
+    private IEnumerator DashWithWindup()
+    {
+        isDashWindup = true;
+        rb.velocity = Vector2.zero; // игрок не двигается во время замаха
+        float timer = 0f;
+        while (timer < dashWindupTime)
+        {
+            // Прерывание замаха только прыжком
+            if (Input.GetButtonDown("Jump"))
+            {
+                isDashWindup = false;
+                yield break;
+            }
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        isDashWindup = false;
+        yield return StartCoroutine(Dash());
     }
 
     // --- Подкат и присед ---
