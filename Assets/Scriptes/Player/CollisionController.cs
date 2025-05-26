@@ -186,6 +186,13 @@ public class CollisionController : MonoBehaviour
         lastWallContactSide = 0;
     }
 
+    /// Отключает контакт со стеной.
+    public void DetachFromWall()
+    {
+        IsTouchingWall = false;
+        ResetWallContactBuffer();
+    }
+
     void OnDrawGizmosSelected()
     {
         // Отрисовываем зону проверки земли.

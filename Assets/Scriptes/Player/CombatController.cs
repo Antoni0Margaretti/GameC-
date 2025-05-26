@@ -40,6 +40,8 @@ public class CombatController : MonoBehaviour
     public bool IsParrying => isParrying;
     public bool IsAttackWindup => isAttackWindup;
 
+    private CollisionController collisionController;
+
     void Start()
     {
         if (comboAttackHitboxes != null)
@@ -51,6 +53,8 @@ public class CombatController : MonoBehaviour
             parryHitbox.SetActive(false);
         if (dashAttackHitbox != null)
             dashAttackHitbox.SetActive(false);
+
+        collisionController = GetComponent<CollisionController>();
     }
 
     void Update()
@@ -93,6 +97,10 @@ public class CombatController : MonoBehaviour
 
     IEnumerator AttackComboWithWindup()
     {
+        // √арантируем отлипание от стены при начале замаха
+        if (collisionController != null && collisionController.IsTouchingWall)
+            collisionController.DetachFromWall();
+
         isAttackWindup = true;
         int comboIndex = 0;
         while (comboIndex < maxCombo)

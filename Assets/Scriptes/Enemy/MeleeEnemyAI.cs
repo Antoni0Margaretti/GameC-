@@ -2,94 +2,103 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-/// Интеллект ближнего врага: умный, адаптивный, с вариативным боем, но без сложного pathfinding.
-/// Враг:
-/// - Всегда знает где игрок.
-/// - Может телепортироваться, если застрял или слишком далеко.
-/// - Вблизи действует агрессивно и непредсказуемо: комбо, ложные атаки, рывки, уклонения, отступления.
-/// - Реагирует на парирование.
-/// - Не использует ActionBasedPathfinder, но умеет прыгать через препятствия и "шагать" через низкие.
+/// <summary>
+/// Интеллект ближнего врага: умный, адаптивный, с вариативным боем.
+/// </summary>
 public class MeleeEnemyAI : EnemyTeleportController
 {
+    // --- Состояния ---
     private enum State
     {
         Idle, Pursuing, MeleeComboAttacking, Charging, Dashing, EvasionDashing, Retreating, Feinting, Jumping, StepOver, Stunned, Recovery, Dead
     }
-    private State currentState = State.Pursuing;
+    [SerializeField] private State currentState = State.Pursuing;
 
+    // --- Параметры обнаружения и движения ---
     [Header("Detection & Movement")]
-    public float detectionRadius = 12f;
-    public float moveSpeed = 3.2f;
-    public float jumpForce = 7.5f;
-    public float stepHeight = 0.35f;
-    public float stepUpSpeed = 10f;
-    public float obstacleCheckDistance = 0.5f;
+    [SerializeField] public float detectionRadius = 12f;
+    [SerializeField] public float moveSpeed = 3.2f;
+    [SerializeField] public float jumpForce = 7.5f;
+    [SerializeField] public float stepHeight = 0.35f;
+    [SerializeField] public float stepUpSpeed = 10f;
+    [SerializeField] public float obstacleCheckDistance = 0.5f;
 
+    // --- Телепорт ---
     [Header("Teleport Settings")]
-    public float teleportDistance = 15f;
+    [SerializeField] public float teleportDistance = 15f;
+    [SerializeField] public float aggressiveTeleportDistance = 20f; // Новая фишка: агрессивный телепорт
 
-    [Header("Dash Settings")]
-    public float dashSpeed = 8f;
-    public float dashDuration = 0.28f;
-    public float dashCooldown = 1.2f;
-    private float lastDashTime = -10f;
-
+    // --- Dash-атака ---
     [Header("Dash Attack Settings")]
-    public float dashAttackWindup = 0.22f; // задержка перед рывком
-    public float dashAttackActive = 0.18f; // длительность самой атаки
-    public float dashAttackCooldown = 2.0f;
+    [SerializeField] public float dashSpeed = 8f;
+    [SerializeField] public float dashAttackWindup = 0.22f;
+    [SerializeField] public float dashAttackActive = 0.18f;
+    [SerializeField] public float dashAttackCooldown = 2.0f;
+    [SerializeField] public GameObject dashAttackHitbox;
     private float lastDashAttackTime = -10f;
 
+    // --- Обычные рывки и уклонения ---
     [Header("Evasion Settings")]
-    public float evasionDashSpeed = 13f;
-    public float evasionDashDuration = 0.13f;
-    public float evasionDashCooldown = 1.5f;
+    [SerializeField] public float evasionDashSpeed = 13f;
+    [SerializeField] public float evasionDashDuration = 0.13f;
+    [SerializeField] public float evasionDashCooldown = 1.5f;
     private float lastEvasionTime = -10f;
 
     [Header("Retreat Settings")]
-    public float retreatDashSpeed = 9f;
-    public float retreatDashDuration = 0.15f;
-    public float retreatCooldown = 1.2f;
+    [SerializeField] public float retreatDashSpeed = 9f;
+    [SerializeField] public float retreatDashDuration = 0.15f;
+    [SerializeField] public float retreatCooldown = 1.2f;
     private float lastRetreatTime = -10f;
 
+    // --- Ближний бой ---
     [Header("Melee Combo Settings")]
-    public float meleeAttackRange = 1.25f;
-    public float meleeAttackDelay = 0.22f;
-    public int meleeComboCount = 2;
-    public GameObject[] comboAttackHitboxes;
+    [SerializeField] public float meleeAttackRange = 1.25f;
+    [SerializeField] public float meleeAttackDelay = 0.22f;
+    [SerializeField] public int meleeComboCount = 2;
+    [SerializeField] public GameObject[] comboAttackHitboxes;
 
-    [Header("Dash Attack Hitbox")]
-    public GameObject dashAttackHitbox;
-
+    // --- Парирование ---
     [Header("Parry Projectile Hitbox")]
-    public GameObject parryProjectileHitbox;
-
-    [Header("AI Variability")]
-    public float feintChance = 0.22f;
-    public float dashBehindChance = 0.18f;
-    public float unpredictableMoveChance = 0.12f;
-    public float attackRhythmVariance = 0.18f;
-    private float lastAttackTime = -10f;
+    [SerializeField] public GameObject parryProjectileHitbox;
 
     [Header("Parry (Stun Player) Settings")]
-    public float parryStunDuration = 0.7f;
-    public float parryKnockbackForce = 8f;
-    public float stunnedTime = 1.1f;
+    [SerializeField] public float parryStunDuration = 0.7f;
+    [SerializeField] public float parryKnockbackForce = 8f;
+    [SerializeField] public float stunnedTime = 1.1f;
 
-    public GameObject exclamationPrefab;
+    // --- AI Вариативность ---
+    [Header("AI Variability")]
+    [SerializeField] public float feintChance = 0.22f;
+    [SerializeField] public float dashBehindChance = 0.18f;
+    [SerializeField] public float unpredictableMoveChance = 0.12f;
+    [SerializeField] public float attackRhythmVariance = 0.18f;
+    [SerializeField] public float dashBehindAndAttackChance = 0.08f;
+    private float lastAttackTime = -10f;
+
+    // --- Сигналы игроку ---
+    [Header("Visual Signals")]
+    [SerializeField] public GameObject exclamationPrefab;
     private GameObject exclamationInstance;
 
+    // --- Внутренние переменные ---
     private bool isDead = false;
     private bool isInvulnerable = true;
     private bool facingRight = true;
     private Coroutine parryProjectileCoroutine;
     private static bool groupTeleportActive = false;
-
     private LayerMask groundLayer;
     private Rigidbody2D rb;
     private Transform player;
 
-    private int playerParryCount = 0; // Счётчик парирований игрока
+    // --- Адаптация к игроку ---
+    private int playerParryCount = 0;
+    private float feintAttackBonus = 0f;
+    private float parryCheckWindow = 5f;
+    private float lastParryCheckTime = 0f;
+
+    // --- События (для расширения) ---
+    public System.Action OnAttackStarted;
+    public System.Action OnAttackEnded;
 
     void Start()
     {
@@ -109,6 +118,14 @@ public class MeleeEnemyAI : EnemyTeleportController
         float distanceToPlayer = Vector2.Distance(transform.position, player.position);
         var playerCombat = player.GetComponent<CombatController>();
 
+        // --- Адаптация к частым парированиям игрока ---
+        if (Time.time - lastParryCheckTime > parryCheckWindow)
+        {
+            feintAttackBonus = playerParryCount > 2 ? 0.25f : 0f;
+            playerParryCount = 0;
+            lastParryCheckTime = Time.time;
+        }
+
         // --- Реакция на подготовку атаки игрока ---
         if (playerCombat != null && playerCombat.IsAttackWindup && currentState == State.Pursuing)
         {
@@ -118,6 +135,13 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         // --- Телепорт, если далеко или застрял ---
         if (ShouldTeleport(distanceToPlayer))
+        {
+            TryTeleportSmart();
+            return;
+        }
+
+        // --- Агрессивный телепорт, если игрок слишком далеко (новая фишка) ---
+        if (distanceToPlayer > aggressiveTeleportDistance && CanTeleport())
         {
             TryTeleportSmart();
             return;
@@ -147,10 +171,10 @@ public class MeleeEnemyAI : EnemyTeleportController
             return;
         }
 
-        // --- Если игрок в радиусе обычной атаки, делаем комбо ---
+        // --- Если игрок в радиусе обычной атаки, делаем комбо или фейк ---
         if (distanceToPlayer <= meleeAttackRange)
         {
-            if (Random.value < feintChance)
+            if (Random.value < feintChance + feintAttackBonus)
             {
                 StartCoroutine(FeintAttackRoutine());
                 return;
@@ -180,8 +204,8 @@ public class MeleeEnemyAI : EnemyTeleportController
             }
         }
 
-        // --- Если игрок в радиусе для рывка за спину и атаки ---
-        if (Random.value < 0.08f && currentState == State.Pursuing && distanceToPlayer < meleeAttackRange * 1.2f)
+        // --- Dash за спину и dash-атака (фишка) ---
+        if (Random.value < dashBehindAndAttackChance && currentState == State.Pursuing && distanceToPlayer < meleeAttackRange * 1.2f)
         {
             StartCoroutine(DashBehindAndAttackRoutine());
             return;
@@ -204,7 +228,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
     private bool CanDashBehind()
     {
-        return Random.value < 0.6f && Time.time - lastEvasionTime > evasionDashCooldown;
+        return Random.value < dashBehindChance && Time.time - lastEvasionTime > evasionDashCooldown;
     }
 
     private bool CanRetreat()
@@ -214,16 +238,13 @@ public class MeleeEnemyAI : EnemyTeleportController
 
     private void ReactToPlayerAttackWindup(float distanceToPlayer)
     {
-        // Приоритет: парирование > уклонение > отступление
         float r = Random.value;
         if (distanceToPlayer <= meleeAttackRange && r < 0.5f)
         {
-            // Парировать
             StartCoroutine(ParryProjectileWindow(0.25f));
         }
         else if (distanceToPlayer < meleeAttackRange * 0.7f && r < 0.8f)
         {
-            // Уклоняющийся рывок
             if (CanDashBehind())
             {
                 StartCoroutine(DashBehindPlayerRoutine());
@@ -237,7 +258,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         }
         else
         {
-            // Просто отступить
             if (CanRetreat())
             {
                 StartCoroutine(RetreatDashRoutine());
@@ -248,13 +268,11 @@ public class MeleeEnemyAI : EnemyTeleportController
 
     void FixedUpdate()
     {
-        // --- Блокировка движения вне состояния Pursuing ---
         if (currentState != State.Pursuing)
         {
             rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
             return;
         }
-        // Движение к игроку реализовано в MoveTowardsPlayer (Update)
     }
 
     private void MoveTowardsPlayer()
@@ -306,15 +324,13 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.MeleeComboAttacking;
         SetInvulnerable(false);
 
-        ShowExclamation(); // Показать сигнал
+        ShowExclamation();
+        OnAttackStarted?.Invoke();
 
-        // Всегда поворачиваемся к игроку перед атакой
         Flip(Mathf.Sign(player.position.x - transform.position.x));
-
-        // ... замах ...
         yield return new WaitForSeconds(0.25f);
 
-        HideExclamation(); // Скрыть сигнал
+        HideExclamation();
 
         for (int i = 0; i < meleeComboCount; i++)
         {
@@ -328,6 +344,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                     currentState = State.Pursuing;
                     SetInvulnerable(true);
                     DisableAllHitboxes();
+                    OnAttackEnded?.Invoke();
                     yield break;
                 }
                 var parryHitbox = player.GetComponentInChildren<ParryHitbox>();
@@ -336,6 +353,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                     currentState = State.Pursuing;
                     SetInvulnerable(true);
                     DisableAllHitboxes();
+                    OnAttackEnded?.Invoke();
                     yield break;
                 }
                 timer += Time.deltaTime;
@@ -349,7 +367,10 @@ public class MeleeEnemyAI : EnemyTeleportController
             yield return new WaitForSeconds(meleeAttackDelay + Random.Range(-0.1f, 0.1f));
 
             if (currentState == State.Stunned || isDead)
+            {
+                OnAttackEnded?.Invoke();
                 yield break;
+            }
 
             EnableComboHitbox(i);
             yield return new WaitForSeconds(0.15f + Random.Range(-0.05f, 0.05f));
@@ -360,6 +381,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         SetInvulnerable(true);
         currentState = State.Pursuing;
+        OnAttackEnded?.Invoke();
     }
 
     IEnumerator DashAttackRoutine()
@@ -368,13 +390,11 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.Dashing;
         SetInvulnerable(true);
 
-        // Сигнал игроку
         ShowExclamation();
-        // Замах
+        OnAttackStarted?.Invoke();
         yield return new WaitForSeconds(dashAttackWindup);
         HideExclamation();
 
-        // Рывок к игроку
         float dir = Mathf.Sign(player.position.x - transform.position.x);
         Flip(dir);
         if (dashAttackHitbox != null)
@@ -390,6 +410,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         SetInvulnerable(false);
         currentState = State.Pursuing;
+        OnAttackEnded?.Invoke();
     }
 
     IEnumerator DashBehindAndAttackRoutine()
@@ -398,7 +419,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.EvasionDashing;
         SetInvulnerable(true);
 
-        // Рывок за спину игрока
         Vector2 behindDir = (player.position.x > transform.position.x) ? Vector2.left : Vector2.right;
         Flip(behindDir.x);
         Vector2 dashTarget = (Vector2)player.position + behindDir * 1.2f;
@@ -409,7 +429,6 @@ public class MeleeEnemyAI : EnemyTeleportController
         rb.linearVelocity = Vector2.zero;
         SetInvulnerable(false);
 
-        // Мгновенно начинаем dash-атаку после рывка за спину
         yield return DashAttackRoutine();
     }
 
@@ -419,9 +438,7 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.Feinting;
         SetInvulnerable(false);
 
-        // Всегда поворачиваемся к игроку перед ложной атакой
         Flip(Mathf.Sign(player.position.x - transform.position.x));
-
         yield return new WaitForSeconds(0.13f + Random.Range(-0.04f, 0.08f));
         if (Random.value < 0.7f)
             StartCoroutine(DashBehindPlayerRoutine());
@@ -624,7 +641,6 @@ public class MeleeEnemyAI : EnemyTeleportController
     {
         if (isDead) return;
 
-        // Парирование только если реально атакован
         if (collision.CompareTag("PlayerAttack") || collision.CompareTag("DashAttack"))
         {
             if (isInvulnerable && !IsDashingOrAttacking() && currentState != State.EvasionDashing && currentState != State.Retreating)
@@ -662,7 +678,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             var parry = collision.GetComponent<ParryHitbox>();
             if (parry != null && parry.IsParrying)
             {
-                playerParryCount++; // Запоминаем парирование игрока
+                playerParryCount++;
                 StopAllCoroutines();
                 currentState = State.Stunned;
                 SetInvulnerable(false);
