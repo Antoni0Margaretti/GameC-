@@ -89,6 +89,8 @@ public class MeleeEnemyAI : EnemyTeleportController
     private Rigidbody2D rb;
     private Transform player;
 
+    private int playerParryCount = 0; // Счётчик парирований игрока
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -176,6 +178,13 @@ public class MeleeEnemyAI : EnemyTeleportController
                 lastRetreatTime = Time.time;
                 return;
             }
+        }
+
+        // --- Если игрок в радиусе для рывка за спину и атаки ---
+        if (Random.value < 0.08f && currentState == State.Pursuing && distanceToPlayer < meleeAttackRange * 1.2f)
+        {
+            StartCoroutine(DashBehindAndAttackRoutine());
+            return;
         }
 
         // --- Немного хаоса: неожиданные манёвры ---
@@ -381,6 +390,27 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         SetInvulnerable(false);
         currentState = State.Pursuing;
+    }
+
+    IEnumerator DashBehindAndAttackRoutine()
+    {
+        if (currentState != State.Pursuing) yield break;
+        currentState = State.EvasionDashing;
+        SetInvulnerable(true);
+
+        // Рывок за спину игрока
+        Vector2 behindDir = (player.position.x > transform.position.x) ? Vector2.left : Vector2.right;
+        Flip(behindDir.x);
+        Vector2 dashTarget = (Vector2)player.position + behindDir * 1.2f;
+        Vector2 dashDir = (dashTarget - (Vector2)transform.position).normalized;
+        rb.linearVelocity = dashDir * evasionDashSpeed;
+        yield return new WaitForSeconds(evasionDashDuration);
+
+        rb.linearVelocity = Vector2.zero;
+        SetInvulnerable(false);
+
+        // Мгновенно начинаем dash-атаку после рывка за спину
+        yield return DashAttackRoutine();
     }
 
     IEnumerator FeintAttackRoutine()
@@ -632,6 +662,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             var parry = collision.GetComponent<ParryHitbox>();
             if (parry != null && parry.IsParrying)
             {
+                playerParryCount++; // Запоминаем парирование игрока
                 StopAllCoroutines();
                 currentState = State.Stunned;
                 SetInvulnerable(false);

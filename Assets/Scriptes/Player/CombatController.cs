@@ -38,6 +38,7 @@ public class CombatController : MonoBehaviour
 
     public bool IsAttacking => isAttacking;
     public bool IsParrying => isParrying;
+    public bool IsAttackWindup => isAttackWindup;
 
     void Start()
     {

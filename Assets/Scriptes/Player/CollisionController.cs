@@ -113,8 +113,8 @@ public class CollisionController : MonoBehaviour
                 backBottom = pos + offset + new Vector2(halfSize.x, -halfSize.y);
             }
 
-            bool frontFull = Physics2D.OverlapPoint(frontTop, wallLayer) && Physics2D.OverlapPoint(frontBottom, wallLayer);
-            bool backFull = Physics2D.OverlapPoint(backTop, wallLayer) && Physics2D.OverlapPoint(backBottom, wallLayer);
+            bool frontFull = Physics2D.OverlapBox(frontTop, new Vector2(0.05f, boxCollider.size.y), 0f, wallLayer);
+            bool backFull = Physics2D.OverlapBox(backTop, new Vector2(0.05f, boxCollider.size.y), 0f, wallLayer);
 
             if (frontFull)
             {
