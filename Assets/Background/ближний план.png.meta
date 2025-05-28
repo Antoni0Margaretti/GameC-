@@ -5,6 +5,9 @@ TextureImporter:
   - first:
       213: 2660097197326664536
     second: "\u0431\u043B\u0438\u0436\u043D\u0438\u0439 \u043F\u043B\u0430\u043D_0"
+  - first:
+      213: 5626225484064626801
+    second: "\u0431\u043B\u0438\u0436\u043D\u0438\u0439 \u043F\u043B\u0430\u043D_1"
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +40,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -46,7 +49,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -118,10 +121,10 @@ TextureImporter:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 1024
-        height: 1001
+        width: 4096
+        height: 4096
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -134,11 +137,33 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
+    - serializedVersion: 2
+      name: "\u0431\u043B\u0438\u0436\u043D\u0438\u0439 \u043F\u043B\u0430\u043D_1"
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 4096
+        height: 1309
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1781cebc44e541e40800000000000000
+      internalID: 5626225484064626801
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 41dbc7f953b8f4c46b4ef0d8a3045fa4
     internalID: 0
     vertices: []
     indices: 
@@ -149,6 +174,7 @@ TextureImporter:
       entries: []
     nameFileIdTable:
       "\u0431\u043B\u0438\u0436\u043D\u0438\u0439 \u043F\u043B\u0430\u043D_0": 2660097197326664536
+      "\u0431\u043B\u0438\u0436\u043D\u0438\u0439 \u043F\u043B\u0430\u043D_1": 5626225484064626801
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
