@@ -49,6 +49,8 @@ public class CombatController : MonoBehaviour
     public bool isLedgeClimbing;
     public bool isWallAttached;
 
+    private bool facingRight = true;
+
     public bool IsAttacking => isAttacking;
     public bool IsParrying => isParrying;
     public bool IsAttackWindup => isAttackWindup;
@@ -85,6 +87,17 @@ public class CombatController : MonoBehaviour
 
         if (parryCooldownTimer > 0f)
             parryCooldownTimer -= Time.deltaTime;
+
+        UpdateFacing();
+    }
+
+    private void UpdateFacing()
+    {
+        float h = Input.GetAxisRaw("Horizontal");
+        if (h > 0.01f && !facingRight)
+            facingRight = true;
+        else if (h < -0.01f && facingRight)
+            facingRight = false;
     }
 
     void HandleAttackInput()
@@ -143,9 +156,12 @@ public class CombatController : MonoBehaviour
             // Воспроизвести эффект удара
             if (comboAttackEffectPrefabs != null && comboIndex < comboAttackEffectPrefabs.Length && comboAttackEffectPrefabs[comboIndex] != null)
             {
-                Vector3 pos = transform.position;
+                Vector3 offset = Vector3.zero;
                 if (comboAttackEffectOffsets != null && comboIndex < comboAttackEffectOffsets.Length)
-                    pos += comboAttackEffectOffsets[comboIndex];
+                    offset = comboAttackEffectOffsets[comboIndex];
+                if (!facingRight)
+                    offset.x = -offset.x;
+                Vector3 pos = transform.position + offset;
                 var fx = Instantiate(comboAttackEffectPrefabs[comboIndex], pos, Quaternion.identity, transform);
                 if (comboAttackEffectScales != null && comboIndex < comboAttackEffectScales.Length)
                     fx.transform.localScale = comboAttackEffectScales[comboIndex];
@@ -273,7 +289,10 @@ public class CombatController : MonoBehaviour
         }
         if (parrySuccessEffectPrefab != null)
         {
-            Vector3 pos = transform.position + parrySuccessEffectOffset;
+            Vector3 offset = parrySuccessEffectOffset;
+            if (!facingRight)
+                offset.x = -offset.x;
+            Vector3 pos = transform.position + offset;
             var fx = Instantiate(parrySuccessEffectPrefab, pos, Quaternion.identity, transform);
             fx.transform.localScale = parrySuccessEffectScale;
         }
@@ -305,9 +324,12 @@ public class CombatController : MonoBehaviour
             {
                 if (dashEffectPrefabs[i] != null)
                 {
-                    Vector3 pos = transform.position;
+                    Vector3 offset = Vector3.zero;
                     if (dashEffectOffsets != null && i < dashEffectOffsets.Length)
-                        pos += dashEffectOffsets[i];
+                        offset = dashEffectOffsets[i];
+                    if (!facingRight)
+                        offset.x = -offset.x;
+                    Vector3 pos = transform.position + offset;
                     var fx = Instantiate(dashEffectPrefabs[i], pos, Quaternion.identity, transform);
                     if (dashEffectScales != null && i < dashEffectScales.Length)
                         fx.transform.localScale = dashEffectScales[i];

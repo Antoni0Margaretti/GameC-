@@ -462,10 +462,13 @@ public class MeleeEnemyAI : EnemyTeleportController
             // Воспроизвести эффект удара для текущего удара
             if (comboAttackEffectPrefabs != null && i < comboAttackEffectPrefabs.Length && comboAttackEffectPrefabs[i] != null)
             {
-                Vector3 pos = transform.position;
+                Vector3 offset = Vector3.zero;
                 if (comboAttackEffectOffsets != null && i < comboAttackEffectOffsets.Length)
-                    pos += comboAttackEffectOffsets[i];
-                var fx = Instantiate(comboAttackEffectPrefabs[i], pos, Quaternion.identity, transform); // transform — это transform персонажа
+                    offset = comboAttackEffectOffsets[i];
+                if (!facingRight)
+                    offset.x = -offset.x;
+                Vector3 pos = transform.position + offset;
+                var fx = Instantiate(comboAttackEffectPrefabs[i], pos, Quaternion.identity, transform);
                 if (comboAttackEffectScales != null && i < comboAttackEffectScales.Length)
                     fx.transform.localScale = comboAttackEffectScales[i];
             }
@@ -494,9 +497,15 @@ public class MeleeEnemyAI : EnemyTeleportController
             {
                 if (dashAttackEffectPrefabs[i] != null)
                 {
-                    Vector3 pos = transform.position;
+                    Vector3 offset = Vector3.zero;
                     if (dashAttackEffectOffsets != null && i < dashAttackEffectOffsets.Length)
-                        pos += dashAttackEffectOffsets[i];
+                        offset = dashAttackEffectOffsets[i];
+
+                    // Инвертируем X-ось смещения, если персонаж смотрит влево
+                    if (!facingRight)
+                        offset.x = -offset.x;
+
+                    Vector3 pos = transform.position + offset;
                     var fx = Instantiate(dashAttackEffectPrefabs[i], pos, Quaternion.identity, transform);
                     if (dashAttackEffectScales != null && i < dashAttackEffectScales.Length)
                         fx.transform.localScale = dashAttackEffectScales[i];
@@ -541,7 +550,10 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (evasionDashEffectPrefab != null)
         {
-            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform);
+            Vector3 offset = evasionDashEffectOffset;
+            if (!facingRight)
+                offset.x = -offset.x;
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = evasionDashEffectScale;
         }
 
@@ -582,7 +594,10 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (evasionDashEffectPrefab != null)
         {
-            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform);
+            Vector3 offset = evasionDashEffectOffset;
+            if (!facingRight)
+                offset.x = -offset.x;
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = evasionDashEffectScale;
         }
 
@@ -607,7 +622,10 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (evasionDashEffectPrefab != null)
         {
-            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform);
+            Vector3 offset = evasionDashEffectOffset;
+            if (!facingRight)
+                offset.x = -offset.x;
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = evasionDashEffectScale;
         }
 
@@ -632,7 +650,10 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (retreatDashEffectPrefab != null)
         {
-            var fx = Instantiate(retreatDashEffectPrefab, transform.position + retreatDashEffectOffset, Quaternion.identity, transform);
+            Vector3 offset = retreatDashEffectOffset;
+            if (!facingRight)
+                offset.x = -offset.x;
+            var fx = Instantiate(retreatDashEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = retreatDashEffectScale;
         }
 
@@ -727,7 +748,10 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (parrySuccessEffectPrefab != null)
         {
-            var fx = Instantiate(parrySuccessEffectPrefab, transform.position + parrySuccessEffectOffset, Quaternion.identity, transform);
+            Vector3 offset = parrySuccessEffectOffset;
+            if (!facingRight)
+                offset.x = -offset.x;
+            var fx = Instantiate(parrySuccessEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = parrySuccessEffectScale;
         }
 
