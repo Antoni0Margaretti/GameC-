@@ -30,6 +30,11 @@ public class MeleeEnemyAI : EnemyTeleportController
     [SerializeField] public float teleportDistance = 15f;
     [SerializeField] public float aggressiveTeleportDistance = 20f; // Новая фишка: агрессивный телепорт
 
+    [Header("Teleport VFX")]
+    public GameObject teleportSilhouettePrefab;
+    public Vector3 teleportSilhouetteOffset;
+    public Vector3 teleportSilhouetteScale = Vector3.one;
+
     // --- Dash-атака ---
     [Header("Dash Attack Settings")]
     [SerializeField] public float dashSpeed = 8f;
@@ -67,6 +72,11 @@ public class MeleeEnemyAI : EnemyTeleportController
     [SerializeField] public float parryStunDuration = 0.7f;
     [SerializeField] public float parryKnockbackForce = 8f;
     [SerializeField] public float stunnedTime = 1.1f;
+
+    [Header("Parry VFX")]
+    public GameObject parryStartEffectPrefab;
+    public Vector3 parryStartEffectOffset;
+    public Vector3 parryStartEffectScale = Vector3.one;
 
     // --- AI Вариативность ---
     [Header("AI Variability")]
@@ -389,7 +399,18 @@ public class MeleeEnemyAI : EnemyTeleportController
     protected override IEnumerator TeleportToPlayerRoutine(float chargeTime)
     {
         isTeleporting = true;
+
+        if (teleportSilhouettePrefab != null)
+        {
+            Vector3 offset = Vector3.right * Random.Range(-1.5f, 1.5f);
+            Vector3 targetPos = player.position + offset;
+            var silhouette = Instantiate(teleportSilhouettePrefab, targetPos + teleportSilhouetteOffset, Quaternion.identity);
+            silhouette.transform.localScale = teleportSilhouetteScale;
+            Destroy(silhouette, chargeTime + 0.1f);
+        }
+
         yield return new WaitForSeconds(chargeTime);
+
         Vector3 offset = Vector3.right * Random.Range(-1.5f, 1.5f);
         transform.position = player.position + offset;
         lastTeleportTime = Time.time;
@@ -670,6 +691,14 @@ public class MeleeEnemyAI : EnemyTeleportController
 
     IEnumerator ParryProjectileWindow(float duration)
     {
+        if (parryStartEffectPrefab != null)
+        {
+            Vector3 offset = parryStartEffectOffset;
+            if (!facingRight) offset.x = -offset.x;
+            var fx = Instantiate(parryStartEffectPrefab, transform.position + offset, Quaternion.identity, transform);
+            fx.transform.localScale = parryStartEffectScale;
+        }
+
         if (parryProjectileHitbox != null)
             parryProjectileHitbox.SetActive(true);
         yield return new WaitForSeconds(duration);
@@ -715,7 +744,7 @@ public class MeleeEnemyAI : EnemyTeleportController
         Vector2 stepOrigin = origin + Vector2.up * stepHeight;
         RaycastHit2D hitHigh = Physics2D.Raycast(stepOrigin, dir, 0.2f, groundLayer);
         return hitHigh.collider == null;
-        }
+    }
 
     private bool CanJump()
     {
@@ -734,6 +763,14 @@ public class MeleeEnemyAI : EnemyTeleportController
     // --- Парирование и урон ---
     public void TryParry(Vector2 attackerPosition)
     {
+        if (parryStartEffectPrefab != null)
+        {
+            Vector3 offset = parryStartEffectOffset;
+            if (!facingRight) offset.x = -offset.x;
+            var fx = Instantiate(parryStartEffectPrefab, transform.position + offset, Quaternion.identity, transform);
+            fx.transform.localScale = parryStartEffectScale;
+        }
+
         var playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
         {

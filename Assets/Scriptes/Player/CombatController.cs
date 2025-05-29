@@ -42,6 +42,11 @@ public class CombatController : MonoBehaviour
     public Vector3[] dashEffectOffsets;
     public Vector3[] dashEffectScales;
 
+    [Header("Parry VFX")]
+    public GameObject parryStartEffectPrefab;
+    public Vector3 parryStartEffectOffset;
+    public Vector3 parryStartEffectScale = Vector3.one;
+
     [Header("Player State Flags (set externally)")]
     public bool isCrouching;
     public bool isSliding;
@@ -259,6 +264,14 @@ public class CombatController : MonoBehaviour
         isParrying = true;
         if (parryHitbox != null)
             parryHitbox.SetActive(true);
+
+        if (parryStartEffectPrefab != null)
+        {
+            Vector3 offset = parryStartEffectOffset;
+            if (!facingRight) offset.x = -offset.x;
+            var fx = Instantiate(parryStartEffectPrefab, transform.position + offset, Quaternion.identity, transform);
+            fx.transform.localScale = parryStartEffectScale;
+        }
 
         yield return new WaitForSeconds(parryDuration);
 

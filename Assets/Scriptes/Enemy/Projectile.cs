@@ -103,6 +103,18 @@ public class Projectile : MonoBehaviour
                     playerDeath.Die();
                 else
                     Destroy(other.gameObject);
+
+                // Открепить trail-эффект, если он есть, чтобы он доиграл анимацию
+                foreach (Transform child in transform)
+                {
+                    var vfx = child.GetComponent<AutoDestroyVFX>();
+                    if (vfx != null)
+                    {
+                        child.SetParent(null);
+                        vfx.PlayAndAutoDestroy();
+                    }
+                }
+
                 Destroy(gameObject);
             }
             // Парирование игроком
@@ -116,6 +128,17 @@ public class Projectile : MonoBehaviour
             }
             else if (!other.isTrigger && !other.CompareTag("Enemy"))
             {
+                // Открепить trail-эффект, если он есть, чтобы он доиграл анимацию
+                foreach (Transform child in transform)
+                {
+                    var vfx = child.GetComponent<AutoDestroyVFX>();
+                    if (vfx != null)
+                    {
+                        child.SetParent(null);
+                        vfx.PlayAndAutoDestroy();
+                    }
+                }
+
                 Destroy(gameObject);
             }
         }
@@ -127,6 +150,18 @@ public class Projectile : MonoBehaviour
                 var ai = other.GetComponent<MeleeEnemyAI>();
                 if (ai != null)
                     ai.TakeDamage();
+
+                // Открепить trail-эффект, если он есть, чтобы он доиграл анимацию
+                foreach (Transform child in transform)
+                {
+                    var vfx = child.GetComponent<AutoDestroyVFX>();
+                    if (vfx != null)
+                    {
+                        child.SetParent(null);
+                        vfx.PlayAndAutoDestroy();
+                    }
+                }
+
                 Destroy(gameObject);
             }
             // Парирование врагом ближнего боя
@@ -140,9 +175,27 @@ public class Projectile : MonoBehaviour
             }
             else if (!other.isTrigger && !other.CompareTag("Player"))
             {
+                // Открепить trail-эффект, если он есть, чтобы он доиграл анимацию
+                foreach (Transform child in transform)
+                {
+                    var vfx = child.GetComponent<AutoDestroyVFX>();
+                    if (vfx != null)
+                    {
+                        child.SetParent(null);
+                        vfx.PlayAndAutoDestroy();
+                    }
+                }
+
                 Destroy(gameObject);
             }
         }
+    }
+
+    public void PlayAndAutoDestroy()
+    {
+        var ps = GetComponent<ParticleSystem>();
+        if (ps != null) ps.Play();
+        Destroy(gameObject, ps != null ? ps.main.duration : 1f);
     }
 }
 

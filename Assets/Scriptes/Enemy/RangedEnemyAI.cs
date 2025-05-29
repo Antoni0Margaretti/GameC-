@@ -38,6 +38,16 @@ public class RangedEnemyAI : EnemyTeleportController
     public Transform firePoint;
     public float projectileSpeed = 10f;
 
+    [Header("Projectile VFX")]
+    public GameObject projectileTrailEffectPrefab;
+    public Vector3 projectileTrailEffectOffset;
+    public Vector3 projectileTrailEffectScale = Vector3.one;
+
+    [Header("Teleport VFX")]
+    public GameObject teleportSilhouettePrefab;
+    public Vector3 teleportSilhouetteOffset;
+    public Vector3 teleportSilhouetteScale = Vector3.one;
+
     [Header("Melee Attack Settings")]
     public float meleeAttackRange = 1.2f;
     public float meleeAttackCooldown = 2f;
@@ -391,6 +401,12 @@ public class RangedEnemyAI : EnemyTeleportController
     IEnumerator TeleportToPositionRoutine(Vector2 pos)
     {
         isTeleporting = true;
+        if (teleportSilhouettePrefab != null)
+        {
+            var silhouette = Instantiate(teleportSilhouettePrefab, (Vector3)pos + teleportSilhouetteOffset, Quaternion.identity);
+            silhouette.transform.localScale = teleportSilhouetteScale;
+            Destroy(silhouette, teleportChargeTimeNear + 0.1f);
+        }
         yield return new WaitForSeconds(teleportChargeTimeNear);
         transform.position = pos;
         lastTeleportTime = Time.time;
@@ -513,6 +529,15 @@ public class RangedEnemyAI : EnemyTeleportController
             {
                 Vector2 shootDirection = (player.position - firePoint.position).normalized;
                 projectileScript.Init(shootDirection, projectileSpeed);
+
+                // VFX: создать следящий эффект
+                if (projectileTrailEffectPrefab != null)
+                {
+                    Vector3 offset = projectileTrailEffectOffset;
+                    var trail = Instantiate(projectileTrailEffectPrefab, proj.transform.position + offset, Quaternion.identity, proj.transform);
+                    trail.transform.localScale = projectileTrailEffectScale;
+                    // trail будет дочерним объектом пули и будет следовать за ней
+                }
             }
         }
     }
