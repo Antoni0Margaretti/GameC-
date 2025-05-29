@@ -439,7 +439,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 Vector3 pos = transform.position;
                 if (comboAttackEffectOffsets != null && i < comboAttackEffectOffsets.Length)
                     pos += comboAttackEffectOffsets[i];
-                var fx = Instantiate(comboAttackEffectPrefabs[i], pos, Quaternion.identity);
+                var fx = Instantiate(comboAttackEffectPrefabs[i], pos, Quaternion.identity, transform); // transform — это transform персонажа
                 if (comboAttackEffectScales != null && i < comboAttackEffectScales.Length)
                     fx.transform.localScale = comboAttackEffectScales[i];
             }
@@ -467,7 +467,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             Vector3 pos = transform.position;
             if (dashAttackEffectOffsets != null && dashIdx < dashAttackEffectOffsets.Length)
                 pos += dashAttackEffectOffsets[dashIdx];
-            var fx = Instantiate(dashAttackEffectPrefabs[dashIdx], pos, Quaternion.identity);
+            var fx = Instantiate(dashAttackEffectPrefabs[dashIdx], pos, Quaternion.identity, transform); // transform — это transform персонажа
             if (dashAttackEffectScales != null && dashIdx < dashAttackEffectScales.Length)
                 fx.transform.localScale = dashAttackEffectScales[dashIdx];
         }
@@ -509,7 +509,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (evasionDashEffectPrefab != null)
         {
-            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity);
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform); // transform — это transform персонажа
             fx.transform.localScale = evasionDashEffectScale;
         }
 
@@ -550,7 +550,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (evasionDashEffectPrefab != null)
         {
-            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity);
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform); // transform — это transform персонажа
             fx.transform.localScale = evasionDashEffectScale;
         }
 
@@ -575,7 +575,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (evasionDashEffectPrefab != null)
         {
-            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity);
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform); // transform — это transform персонажа
             fx.transform.localScale = evasionDashEffectScale;
         }
 
@@ -600,7 +600,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (retreatDashEffectPrefab != null)
         {
-            var fx = Instantiate(retreatDashEffectPrefab, transform.position + retreatDashEffectOffset, Quaternion.identity);
+            var fx = Instantiate(retreatDashEffectPrefab, transform.position + retreatDashEffectOffset, Quaternion.identity, transform); // transform — это transform персонажа
             fx.transform.localScale = retreatDashEffectScale;
         }
 
@@ -695,7 +695,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (parrySuccessEffectPrefab != null)
         {
-            var fx = Instantiate(parrySuccessEffectPrefab, transform.position + parrySuccessEffectOffset, Quaternion.identity);
+            var fx = Instantiate(parrySuccessEffectPrefab, transform.position + parrySuccessEffectOffset, Quaternion.identity, transform); // transform — это transform персонажа
             fx.transform.localScale = parrySuccessEffectScale;
         }
 
@@ -898,7 +898,7 @@ public class MeleeEnemyAI : EnemyTeleportController
     {
         if (exclamationPrefab != null && exclamationInstance == null)
         {
-            exclamationInstance = Instantiate(exclamationPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity, transform);
+            exclamationInstance = Instantiate(exclamationPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity, transform); // transform — это transform персонажа
         }
     }
 

@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 244300593561443244}
   - component: {fileID: 6634975616161750006}
   - component: {fileID: 5349198932945253894}
+  - component: {fileID: -3227028321545989595}
   m_Layer: 0
   m_Name: IMPACT DUST KICK_0
   m_TagString: Untagged
@@ -110,3 +111,16 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &-3227028321545989595
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7550472318596406985}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04c8ac195f58fa74b970132f30b1db21, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  lifetime: 1
