@@ -122,10 +122,10 @@ TextureImporter:
       name: spritesheet9_0
       rect:
         serializedVersion: 2
-        x: 11
-        y: 13
-        width: 11
-        height: 10
+        x: 12
+        y: 14
+        width: 9
+        height: 8
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -144,10 +144,10 @@ TextureImporter:
       name: spritesheet9_1
       rect:
         serializedVersion: 2
-        x: 39
-        y: 8
-        width: 19
-        height: 20
+        x: 40
+        y: 9
+        width: 17
+        height: 18
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -166,10 +166,10 @@ TextureImporter:
       name: spritesheet9_2
       rect:
         serializedVersion: 2
-        x: 67
-        y: 5
-        width: 125
-        height: 26
+        x: 68
+        y: 6
+        width: 27
+        height: 25
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -184,11 +184,77 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
+    - serializedVersion: 2
+      name: spritesheet9_3
+      rect:
+        serializedVersion: 2
+        x: 98
+        y: 4
+        width: 29
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c4659851677759349acf1df67d319d72
+      internalID: -100458536
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: spritesheet9_4
+      rect:
+        serializedVersion: 2
+        x: 130
+        y: 3
+        width: 31
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d2b3df75963a6ef4991ed98efdf86808
+      internalID: -1897019590
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: spritesheet9_5
+      rect:
+        serializedVersion: 2
+        x: 163
+        y: 2
+        width: 29
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 6d0523b9f52e484459756f191907ace8
+      internalID: -1933644503
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: aeb231fe96811dc46b383e38614f4b47
     internalID: 0
     vertices: []
     indices: 
@@ -197,7 +263,10 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      spritesheet9_3: -100458536
+      spritesheet9_4: -1897019590
+      spritesheet9_5: -1933644503
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

@@ -23,6 +23,8 @@ public class MeleeEnemyAI : EnemyTeleportController
     [SerializeField] public float stepUpSpeed = 10f;
     [SerializeField] public float obstacleCheckDistance = 0.5f;
 
+    private bool playerDetected = false;
+
     // --- Телепорт ---
     [Header("Teleport Settings")]
     [SerializeField] public float teleportDistance = 15f;
@@ -80,6 +82,14 @@ public class MeleeEnemyAI : EnemyTeleportController
     [SerializeField] public GameObject exclamationPrefab;
     private GameObject exclamationInstance;
 
+    // --- Визуальные эффекты ---
+    [Header("VFX")]
+    public GameObject[] comboAttackEffectPrefabs; // по одному на каждый удар комбо
+    public GameObject[] dashAttackEffectPrefabs; // 2 эффекта для атакующего рывка
+    public GameObject parrySuccessEffectPrefab;
+    public GameObject evasionDashEffectPrefab; // для уклоняющегося рывка
+    public GameObject retreatDashEffectPrefab; // для отступающего рывка
+
     // --- Внутренние переменные ---
     private bool isDead = false;
     private bool isInvulnerable = true;
@@ -113,9 +123,44 @@ public class MeleeEnemyAI : EnemyTeleportController
 
     void Update()
     {
-        if (isDead || player == null || isTeleporting || currentState == State.Dead) return;
+        if (isDead || isTeleporting || currentState == State.Dead) return;
+
+        // Проверяем, есть ли игрок в detectionRadius
+        if (player == null)
+        {
+            player = GameObject.FindGameObjectWithTag("Player")?.transform;
+            if (player == null) return;
+        }
 
         float distanceToPlayer = Vector2.Distance(transform.position, player.position);
+
+        // Детектирование игрока
+        if (!playerDetected)
+        {
+            if (distanceToPlayer <= detectionRadius)
+            {
+                playerDetected = true;
+                currentState = State.Pursuing;
+            }
+            else
+            {
+                currentState = State.Idle;
+                rb.linearVelocity = Vector2.zero;
+                return;
+            }
+        }
+        else
+        {
+            if (distanceToPlayer > detectionRadius * 1.1f) // небольшой гистерезис, чтобы не мигал
+            {
+                playerDetected = false;
+                currentState = State.Idle;
+                rb.linearVelocity = Vector2.zero;
+                return;
+            }
+        }
+
+        // Дальнейшая логика AI (оставьте как есть)
         var playerCombat = player.GetComponent<CombatController>();
 
         // --- Адаптация к частым парированиям игрока ---
@@ -373,6 +418,11 @@ public class MeleeEnemyAI : EnemyTeleportController
             }
 
             EnableComboHitbox(i);
+
+            // Воспроизвести эффект удара для текущего удара
+            if (comboAttackEffectPrefabs != null && i < comboAttackEffectPrefabs.Length && comboAttackEffectPrefabs[i] != null)
+                Instantiate(comboAttackEffectPrefabs[i], transform.position, Quaternion.identity);
+
             yield return new WaitForSeconds(0.15f + Random.Range(-0.05f, 0.05f));
             DisableComboHitbox(i);
 
@@ -389,6 +439,9 @@ public class MeleeEnemyAI : EnemyTeleportController
         if (currentState != State.Pursuing) yield break;
         currentState = State.Dashing;
         SetInvulnerable(true);
+
+        if (comboAttackEffectPrefabs != null && comboAttackEffectPrefabs.Length > 0 && comboAttackEffectPrefabs[0] != null)
+            Instantiate(comboAttackEffectPrefabs[0], transform.position, Quaternion.identity);
 
         ShowExclamation();
         OnAttackStarted?.Invoke();
@@ -424,6 +477,10 @@ public class MeleeEnemyAI : EnemyTeleportController
         Vector2 dashTarget = (Vector2)player.position + behindDir * 1.2f;
         Vector2 dashDir = (dashTarget - (Vector2)transform.position).normalized;
         rb.linearVelocity = dashDir * evasionDashSpeed;
+
+        if (evasionDashEffectPrefab != null)
+            Instantiate(evasionDashEffectPrefab, transform.position, Quaternion.identity);
+
         yield return new WaitForSeconds(evasionDashDuration);
 
         rb.linearVelocity = Vector2.zero;
@@ -458,6 +515,10 @@ public class MeleeEnemyAI : EnemyTeleportController
         Vector2 dashTarget = (Vector2)player.position + behindDir * 1.2f;
         Vector2 dashDir = (dashTarget - (Vector2)transform.position).normalized;
         rb.linearVelocity = dashDir * evasionDashSpeed;
+
+        if (evasionDashEffectPrefab != null)
+            Instantiate(evasionDashEffectPrefab, transform.position, Quaternion.identity);
+
         while (timer < evasionDashDuration)
         {
             timer += Time.deltaTime;
@@ -476,6 +537,10 @@ public class MeleeEnemyAI : EnemyTeleportController
         Vector2 dir = Random.value < 0.5f ? Vector2.right : Vector2.left;
         Flip(dir.x);
         rb.linearVelocity = dir * evasionDashSpeed;
+
+        if (evasionDashEffectPrefab != null)
+            Instantiate(evasionDashEffectPrefab, transform.position, Quaternion.identity);
+
         while (timer < evasionDashDuration * 0.7f)
         {
             timer += Time.deltaTime;
@@ -582,6 +647,9 @@ public class MeleeEnemyAI : EnemyTeleportController
             }
         }
         BlockAttack(attackerPosition);
+
+        if (parrySuccessEffectPrefab != null)
+            Instantiate(parrySuccessEffectPrefab, transform.position, Quaternion.identity);
 
         if (currentState == State.MeleeComboAttacking ||
             currentState == State.Dashing)

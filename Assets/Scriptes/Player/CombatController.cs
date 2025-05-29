@@ -29,6 +29,11 @@ public class CombatController : MonoBehaviour
     public float dashDamageDuration = 0.3f;
     private bool isDashAttacking = false;
 
+    [Header("VFX")]
+    public GameObject[] comboAttackEffectPrefabs; // по одному на каждый удар комбо
+    public GameObject parrySuccessEffectPrefab;
+    public GameObject[] dashEffectPrefabs; // например, dashEffectPrefabs[0] — обычный, [1] — особый
+
     [Header("Player State Flags (set externally)")]
     public bool isCrouching;
     public bool isSliding;
@@ -126,6 +131,10 @@ public class CombatController : MonoBehaviour
             comboTimer = 0f;
             currentCombo = comboIndex + 1;
             ActivateAttackHitboxForCombo(currentCombo);
+
+            // Воспроизвести эффект удара
+            if (comboAttackEffectPrefabs != null && comboIndex < comboAttackEffectPrefabs.Length && comboAttackEffectPrefabs[comboIndex] != null)
+                Instantiate(comboAttackEffectPrefabs[comboIndex], transform.position, Quaternion.identity);
 
             float activeTime = attackActiveTimes.Length > comboIndex ? attackActiveTimes[comboIndex] : 0.3f;
             float attackTimer = 0f;
@@ -247,6 +256,8 @@ public class CombatController : MonoBehaviour
                 parryHitbox.SetActive(false);
             isParrying = false;
         }
+        if (parrySuccessEffectPrefab != null)
+            Instantiate(parrySuccessEffectPrefab, transform.position, Quaternion.identity);
         parryCooldownTimer = 0f;
     }
 
@@ -268,6 +279,10 @@ public class CombatController : MonoBehaviour
     IEnumerator PerformDashAttackDamage()
     {
         isDashAttacking = true;
+        // Воспроизвести эффект рывка (например, первый вариант)
+        if (dashEffectPrefabs != null && dashEffectPrefabs.Length > 0 && dashEffectPrefabs[0] != null)
+            Instantiate(dashEffectPrefabs[0], transform.position, Quaternion.identity);
+
         if (dashAttackHitbox != null)
             dashAttackHitbox.SetActive(true);
         yield return new WaitForSeconds(dashDamageDuration);
