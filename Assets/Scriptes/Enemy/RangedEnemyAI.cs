@@ -59,14 +59,6 @@ public class RangedEnemyAI : EnemyTeleportController
     public float meleeAttackStunDuration = 0.7f;
     public Collider2D meleeAttackHitbox;
 
-    [Header("Pathfinding")]
-    public ActionBasedPathfinder actionPathfinder;
-    private List<EnemyAction> currentActions;
-    private int currentActionIndex = 0;
-    private float pathRecalcTimer = 0f;
-    private float pathRecalcInterval = 0.5f;
-    private bool isPerformingManeuver = false; // Блокировка других действий
-
     private float lastMeleeAttackTime = -10f;
     private Coroutine meleeAttackCoroutine;
 
@@ -116,9 +108,6 @@ public class RangedEnemyAI : EnemyTeleportController
             else
                 Debug.LogError("Player не найден на сцене!");
         }
-        actionPathfinder = GetComponent<ActionBasedPathfinder>();
-        if (actionPathfinder == null)
-            Debug.LogError("ActionBasedPathfinder не найден на объекте врага!");
         rb = GetComponent<Rigidbody2D>();
         if (rb == null)
             Debug.LogError("Rigidbody2D не найден на объекте врага!");
@@ -234,7 +223,7 @@ public class RangedEnemyAI : EnemyTeleportController
         switch (currentState)
         {
             case State.Pursuing:
-                MoveToBestAttackPosition();
+                SimpleMoveToBestAttackPosition();
                 if (hasVisualContact && IsInAttackRange())
                     StartCoroutine(BeginAiming());
                 if (!hasVisualContact && Time.time - lastSightTime > lostSightReloadDelay && currentAmmo < magazineSize)
@@ -286,91 +275,26 @@ public class RangedEnemyAI : EnemyTeleportController
         return dist >= minAttackDistance && dist <= maxAttackDistance && CheckVisualContact();
     }
 
-    void MoveToBestAttackPosition()
+    void SimpleMoveToBestAttackPosition()
     {
-        if (IsInAttackRange() || isPerformingManeuver)
+        if (IsInAttackRange())
             return;
 
-        pathRecalcTimer += Time.deltaTime;
-        bool needNewPath = false;
-
-        Vector2 targetPos = GetBestAttackPosition();
-
-        if (currentActions == null || currentActionIndex >= (currentActions?.Count ?? 0) || pathRecalcTimer > pathRecalcInterval)
-            needNewPath = true;
-
-        if (needNewPath)
-        {
-            pathRecalcTimer = 0f;
-            var initialState = new EnemyState
-            {
-                Position = transform.position,
-                Velocity = rb != null ? rb.linearVelocity : Vector2.zero,
-                IsGrounded = IsGrounded(),
-                DashUsed = false,
-                JumpUsed = false
-            };
-            currentActions = actionPathfinder.FindActionPath(transform.position, targetPos, initialState);
-            currentActionIndex = 0;
-        }
-
-        // Выполнение действий из pathfinder
-        if (currentActions != null && currentActionIndex < currentActions.Count)
-        {
-            ExecuteAction(currentActions[currentActionIndex]);
-        }
+        Vector2 targetPos = GetSimpleBestAttackPosition();
+        Vector2 direction = (targetPos - (Vector2)transform.position).normalized;
+        rb.linearVelocity = new Vector2(direction.x * moveSpeed, rb.linearVelocity.y);
     }
 
-    void ExecuteAction(EnemyAction action)
+    Vector2 GetSimpleBestAttackPosition()
     {
-        switch (action.Type)
-        {
-            case EnemyActionType.Walk:
-                Vector2 move = action.Direction * moveSpeed;
-                transform.position += (Vector3)(move * Time.deltaTime);
-                currentActionIndex++;
-                break;
-            case EnemyActionType.Jump:
-                if (IsGrounded() && rb != null)
-                {
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, action.Force);
-                    currentActionIndex++;
-                }
-                break;
-            case EnemyActionType.StepOver:
-                StartCoroutine(StepOverRoutine(action));
-                break;
-                // Можно добавить AirControl и EvasionDash при необходимости
-        }
-    }
-
-    IEnumerator StepOverRoutine(EnemyAction action)
-    {
-        isPerformingManeuver = true;
-        float timer = 0f;
-        float duration = action.Duration;
-        while (timer < duration)
-        {
-            transform.position += Vector3.up * action.Force * Time.deltaTime;
-            timer += Time.deltaTime;
-            yield return null;
-        }
-        isPerformingManeuver = false;
-        currentActionIndex++;
-    }
-    Vector2 GetBestAttackPosition()
-    {
-        // Простейшая логика: позиция на оптимальной дистанции от игрока
         Vector2 dir = (transform.position.x < player.position.x) ? Vector2.left : Vector2.right;
         float targetX = Mathf.Clamp(player.position.x + dir.x * Random.Range(minAttackDistance, maxAttackDistance),
                                    player.position.x - maxAttackDistance, player.position.x + maxAttackDistance);
         return new Vector2(targetX, transform.position.y);
     }
 
-
     bool ShouldTeleportToBetterPosition()
     {
-        // ���� �� � ���� ����� ��� ����� ������� ������ � ���������������
         float dist = Vector2.Distance(transform.position, player.position);
         return !IsInAttackRange() || dist < retreatDistance * 0.8f;
     }
@@ -386,7 +310,6 @@ public class RangedEnemyAI : EnemyTeleportController
 
     Vector2? FindSmartTeleportPosition()
     {
-        // ���� ������� �� ���������� ������ ������ � ������� �����
         List<Vector2> candidates = new List<Vector2>();
         int samples = 12;
         for (int i = 0; i < samples; i++)
@@ -419,15 +342,12 @@ public class RangedEnemyAI : EnemyTeleportController
 
     bool IsPositionSafe(Vector2 pos)
     {
-        // �������� �����
         RaycastHit2D groundHit = Physics2D.Raycast(pos, Vector2.down, 2f, groundMask);
         if (groundHit.collider == null)
             return false;
-        // �������� �����������
         Collider2D wall = Physics2D.OverlapCircle(pos, 0.5f, groundMask | obstacleMask);
         if (wall != null)
             return false;
-        // ����� �������� �������� �� ������ ������ � �������
         return true;
     }
 
