@@ -9,4 +9,4 @@ public class AttackHitboxTrigger : MonoBehaviour
     {
         OnTriggerEnterEvent?.Invoke(other);
     }
-}
+} 
