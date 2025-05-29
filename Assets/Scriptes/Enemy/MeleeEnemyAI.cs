@@ -85,10 +85,24 @@ public class MeleeEnemyAI : EnemyTeleportController
     // --- Визуальные эффекты ---
     [Header("VFX")]
     public GameObject[] comboAttackEffectPrefabs; // по одному на каждый удар комбо
-    public GameObject[] dashAttackEffectPrefabs; // 2 эффекта для атакующего рывка
+    public Vector3[] comboAttackEffectOffsets;    // смещение для каждого удара
+    public Vector3[] comboAttackEffectScales;     // масштаб для каждого удара
+
+    public GameObject[] dashAttackEffectPrefabs;  // 2 эффекта для атакующего рывка
+    public Vector3[] dashAttackEffectOffsets;
+    public Vector3[] dashAttackEffectScales;
+
     public GameObject parrySuccessEffectPrefab;
-    public GameObject evasionDashEffectPrefab; // для уклоняющегося рывка
-    public GameObject retreatDashEffectPrefab; // для отступающего рывка
+    public Vector3 parrySuccessEffectOffset;
+    public Vector3 parrySuccessEffectScale;
+
+    public GameObject evasionDashEffectPrefab;
+    public Vector3 evasionDashEffectOffset;
+    public Vector3 evasionDashEffectScale;
+
+    public GameObject retreatDashEffectPrefab;
+    public Vector3 retreatDashEffectOffset;
+    public Vector3 retreatDashEffectScale;
 
     // --- Внутренние переменные ---
     private bool isDead = false;
@@ -421,7 +435,14 @@ public class MeleeEnemyAI : EnemyTeleportController
 
             // Воспроизвести эффект удара для текущего удара
             if (comboAttackEffectPrefabs != null && i < comboAttackEffectPrefabs.Length && comboAttackEffectPrefabs[i] != null)
-                Instantiate(comboAttackEffectPrefabs[i], transform.position, Quaternion.identity);
+            {
+                Vector3 pos = transform.position;
+                if (comboAttackEffectOffsets != null && i < comboAttackEffectOffsets.Length)
+                    pos += comboAttackEffectOffsets[i];
+                var fx = Instantiate(comboAttackEffectPrefabs[i], pos, Quaternion.identity);
+                if (comboAttackEffectScales != null && i < comboAttackEffectScales.Length)
+                    fx.transform.localScale = comboAttackEffectScales[i];
+            }
 
             yield return new WaitForSeconds(0.15f + Random.Range(-0.05f, 0.05f));
             DisableComboHitbox(i);
@@ -440,8 +461,16 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.Dashing;
         SetInvulnerable(true);
 
-        if (comboAttackEffectPrefabs != null && comboAttackEffectPrefabs.Length > 0 && comboAttackEffectPrefabs[0] != null)
-            Instantiate(comboAttackEffectPrefabs[0], transform.position, Quaternion.identity);
+        int dashIdx = 0; // или 1, если нужен второй вариант
+        if (dashAttackEffectPrefabs != null && dashIdx < dashAttackEffectPrefabs.Length && dashAttackEffectPrefabs[dashIdx] != null)
+        {
+            Vector3 pos = transform.position;
+            if (dashAttackEffectOffsets != null && dashIdx < dashAttackEffectOffsets.Length)
+                pos += dashAttackEffectOffsets[dashIdx];
+            var fx = Instantiate(dashAttackEffectPrefabs[dashIdx], pos, Quaternion.identity);
+            if (dashAttackEffectScales != null && dashIdx < dashAttackEffectScales.Length)
+                fx.transform.localScale = dashAttackEffectScales[dashIdx];
+        }
 
         ShowExclamation();
         OnAttackStarted?.Invoke();
@@ -479,7 +508,10 @@ public class MeleeEnemyAI : EnemyTeleportController
         rb.linearVelocity = dashDir * evasionDashSpeed;
 
         if (evasionDashEffectPrefab != null)
-            Instantiate(evasionDashEffectPrefab, transform.position, Quaternion.identity);
+        {
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity);
+            fx.transform.localScale = evasionDashEffectScale;
+        }
 
         yield return new WaitForSeconds(evasionDashDuration);
 
@@ -517,7 +549,10 @@ public class MeleeEnemyAI : EnemyTeleportController
         rb.linearVelocity = dashDir * evasionDashSpeed;
 
         if (evasionDashEffectPrefab != null)
-            Instantiate(evasionDashEffectPrefab, transform.position, Quaternion.identity);
+        {
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity);
+            fx.transform.localScale = evasionDashEffectScale;
+        }
 
         while (timer < evasionDashDuration)
         {
@@ -539,7 +574,10 @@ public class MeleeEnemyAI : EnemyTeleportController
         rb.linearVelocity = dir * evasionDashSpeed;
 
         if (evasionDashEffectPrefab != null)
-            Instantiate(evasionDashEffectPrefab, transform.position, Quaternion.identity);
+        {
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity);
+            fx.transform.localScale = evasionDashEffectScale;
+        }
 
         while (timer < evasionDashDuration * 0.7f)
         {
@@ -559,6 +597,13 @@ public class MeleeEnemyAI : EnemyTeleportController
         Flip(direction);
         float timer = 0f;
         rb.linearVelocity = new Vector2(direction * retreatDashSpeed, 0f);
+
+        if (retreatDashEffectPrefab != null)
+        {
+            var fx = Instantiate(retreatDashEffectPrefab, transform.position + retreatDashEffectOffset, Quaternion.identity);
+            fx.transform.localScale = retreatDashEffectScale;
+        }
+
         while (timer < retreatDashDuration)
         {
             timer += Time.deltaTime;
@@ -649,7 +694,10 @@ public class MeleeEnemyAI : EnemyTeleportController
         BlockAttack(attackerPosition);
 
         if (parrySuccessEffectPrefab != null)
-            Instantiate(parrySuccessEffectPrefab, transform.position, Quaternion.identity);
+        {
+            var fx = Instantiate(parrySuccessEffectPrefab, transform.position + parrySuccessEffectOffset, Quaternion.identity);
+            fx.transform.localScale = parrySuccessEffectScale;
+        }
 
         if (currentState == State.MeleeComboAttacking ||
             currentState == State.Dashing)

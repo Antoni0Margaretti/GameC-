@@ -31,8 +31,16 @@ public class CombatController : MonoBehaviour
 
     [Header("VFX")]
     public GameObject[] comboAttackEffectPrefabs; // по одному на каждый удар комбо
+    public Vector3[] comboAttackEffectOffsets;    // смещение дл€ каждого удара
+    public Vector3[] comboAttackEffectScales;     // масштаб дл€ каждого удара
+
     public GameObject parrySuccessEffectPrefab;
-    public GameObject[] dashEffectPrefabs; // например, dashEffectPrefabs[0] Ч обычный, [1] Ч особый
+    public Vector3 parrySuccessEffectOffset;
+    public Vector3 parrySuccessEffectScale;
+
+    public GameObject[] dashEffectPrefabs;        // например, dashEffectPrefabs[0] Ч обычный, [1] Ч особый
+    public Vector3[] dashEffectOffsets;
+    public Vector3[] dashEffectScales;
 
     [Header("Player State Flags (set externally)")]
     public bool isCrouching;
@@ -134,7 +142,14 @@ public class CombatController : MonoBehaviour
 
             // ¬оспроизвести эффект удара
             if (comboAttackEffectPrefabs != null && comboIndex < comboAttackEffectPrefabs.Length && comboAttackEffectPrefabs[comboIndex] != null)
-                Instantiate(comboAttackEffectPrefabs[comboIndex], transform.position, Quaternion.identity);
+            {
+                Vector3 pos = transform.position;
+                if (comboAttackEffectOffsets != null && comboIndex < comboAttackEffectOffsets.Length)
+                    pos += comboAttackEffectOffsets[comboIndex];
+                var fx = Instantiate(comboAttackEffectPrefabs[comboIndex], pos, Quaternion.identity, transform);
+                if (comboAttackEffectScales != null && comboIndex < comboAttackEffectScales.Length)
+                    fx.transform.localScale = comboAttackEffectScales[comboIndex];
+            }
 
             float activeTime = attackActiveTimes.Length > comboIndex ? attackActiveTimes[comboIndex] : 0.3f;
             float attackTimer = 0f;
@@ -257,7 +272,11 @@ public class CombatController : MonoBehaviour
             isParrying = false;
         }
         if (parrySuccessEffectPrefab != null)
-            Instantiate(parrySuccessEffectPrefab, transform.position, Quaternion.identity);
+        {
+            Vector3 pos = transform.position + parrySuccessEffectOffset;
+            var fx = Instantiate(parrySuccessEffectPrefab, pos, Quaternion.identity, transform);
+            fx.transform.localScale = parrySuccessEffectScale;
+        }
         parryCooldownTimer = 0f;
     }
 
@@ -280,8 +299,16 @@ public class CombatController : MonoBehaviour
     {
         isDashAttacking = true;
         // ¬оспроизвести эффект рывка (например, первый вариант)
-        if (dashEffectPrefabs != null && dashEffectPrefabs.Length > 0 && dashEffectPrefabs[0] != null)
-            Instantiate(dashEffectPrefabs[0], transform.position, Quaternion.identity);
+        int dashIdx = 0; // или другой индекс, если нужно
+        if (dashEffectPrefabs != null && dashIdx < dashEffectPrefabs.Length && dashEffectPrefabs[dashIdx] != null)
+        {
+            Vector3 pos = transform.position;
+            if (dashEffectOffsets != null && dashIdx < dashEffectOffsets.Length)
+                pos += dashEffectOffsets[dashIdx];
+            var fx = Instantiate(dashEffectPrefabs[dashIdx], pos, Quaternion.identity, transform);
+            if (dashEffectScales != null && dashIdx < dashEffectScales.Length)
+                fx.transform.localScale = dashEffectScales[dashIdx];
+        }
 
         if (dashAttackHitbox != null)
             dashAttackHitbox.SetActive(true);
