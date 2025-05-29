@@ -48,6 +48,10 @@ public class RangedEnemyAI : EnemyTeleportController
     public Vector3 teleportSilhouetteOffset;
     public Vector3 teleportSilhouetteScale = Vector3.one;
 
+    [Header("VFX Lifetimes")]
+    public float projectileTrailEffectLifetime = 1.0f;
+    public float teleportSilhouetteLifetime = 1.0f;
+
     [Header("Melee Attack Settings")]
     public float meleeAttackRange = 1.2f;
     public float meleeAttackCooldown = 2f;
@@ -405,7 +409,7 @@ public class RangedEnemyAI : EnemyTeleportController
         {
             var silhouette = Instantiate(teleportSilhouettePrefab, (Vector3)pos + teleportSilhouetteOffset, Quaternion.identity);
             silhouette.transform.localScale = teleportSilhouetteScale;
-            Destroy(silhouette, teleportChargeTimeNear + 0.1f);
+            Destroy(silhouette, teleportSilhouetteLifetime);
         }
         yield return new WaitForSeconds(teleportChargeTimeNear);
         transform.position = pos;
@@ -536,7 +540,7 @@ public class RangedEnemyAI : EnemyTeleportController
                     Vector3 offset = projectileTrailEffectOffset;
                     var trail = Instantiate(projectileTrailEffectPrefab, proj.transform.position + offset, Quaternion.identity, proj.transform);
                     trail.transform.localScale = projectileTrailEffectScale;
-                    // trail будет дочерним объектом пули и будет следовать за ней
+                    Destroy(trail, projectileTrailEffectLifetime);
                 }
             }
         }

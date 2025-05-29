@@ -47,6 +47,12 @@ public class CombatController : MonoBehaviour
     public Vector3 parryStartEffectOffset;
     public Vector3 parryStartEffectScale = Vector3.one;
 
+    [Header("VFX Lifetimes")]
+    public float comboAttackEffectLifetime = 1.0f;
+    public float dashEffectLifetime = 1.0f;
+    public float parryStartEffectLifetime = 1.0f;
+    public float parrySuccessEffectLifetime = 1.0f;
+
     [Header("Player State Flags (set externally)")]
     public bool isCrouching;
     public bool isSliding;
@@ -170,6 +176,7 @@ public class CombatController : MonoBehaviour
                 var fx = Instantiate(comboAttackEffectPrefabs[comboIndex], pos, Quaternion.identity, transform);
                 if (comboAttackEffectScales != null && comboIndex < comboAttackEffectScales.Length)
                     fx.transform.localScale = comboAttackEffectScales[comboIndex];
+                Destroy(fx, comboAttackEffectLifetime);
             }
 
             float activeTime = attackActiveTimes.Length > comboIndex ? attackActiveTimes[comboIndex] : 0.3f;
@@ -271,6 +278,7 @@ public class CombatController : MonoBehaviour
             if (!facingRight) offset.x = -offset.x;
             var fx = Instantiate(parryStartEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = parryStartEffectScale;
+            Destroy(fx, parryStartEffectLifetime);
         }
 
         yield return new WaitForSeconds(parryDuration);
@@ -308,6 +316,7 @@ public class CombatController : MonoBehaviour
             Vector3 pos = transform.position + offset;
             var fx = Instantiate(parrySuccessEffectPrefab, pos, Quaternion.identity, transform);
             fx.transform.localScale = parrySuccessEffectScale;
+            Destroy(fx, parrySuccessEffectLifetime);
         }
         parryCooldownTimer = 0f;
     }
@@ -346,6 +355,7 @@ public class CombatController : MonoBehaviour
                     var fx = Instantiate(dashEffectPrefabs[i], pos, Quaternion.identity, transform);
                     if (dashEffectScales != null && i < dashEffectScales.Length)
                         fx.transform.localScale = dashEffectScales[i];
+                    Destroy(fx, dashEffectLifetime);
                 }
             }
         }

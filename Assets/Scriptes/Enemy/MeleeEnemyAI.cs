@@ -34,6 +34,7 @@ public class MeleeEnemyAI : EnemyTeleportController
     public GameObject teleportSilhouettePrefab;
     public Vector3 teleportSilhouetteOffset;
     public Vector3 teleportSilhouetteScale = Vector3.one;
+    public float teleportSilhouetteLifetime = 1.0f;
 
     // --- Dash-атака ---
     [Header("Dash Attack Settings")]
@@ -77,6 +78,7 @@ public class MeleeEnemyAI : EnemyTeleportController
     public GameObject parryStartEffectPrefab;
     public Vector3 parryStartEffectOffset;
     public Vector3 parryStartEffectScale = Vector3.one;
+    public float parryStartEffectLifetime = 1.0f;
 
     // --- AI Вариативность ---
     [Header("AI Variability")]
@@ -97,22 +99,31 @@ public class MeleeEnemyAI : EnemyTeleportController
     public GameObject[] comboAttackEffectPrefabs; // по одному на каждый удар комбо
     public Vector3[] comboAttackEffectOffsets;    // смещение для каждого удара
     public Vector3[] comboAttackEffectScales;     // масштаб для каждого удара
+    public float comboAttackEffectLifetime = 1.0f;
 
     public GameObject[] dashAttackEffectPrefabs;  // 2 эффекта для атакующего рывка
     public Vector3[] dashAttackEffectOffsets;
     public Vector3[] dashAttackEffectScales;
+    public float dashAttackEffectLifetime = 1.0f;
 
     public GameObject parrySuccessEffectPrefab;
     public Vector3 parrySuccessEffectOffset;
     public Vector3 parrySuccessEffectScale;
+    public float parrySuccessEffectLifetime = 1.0f;
 
     public GameObject evasionDashEffectPrefab;
     public Vector3 evasionDashEffectOffset;
     public Vector3 evasionDashEffectScale;
+    public float evasionDashEffectLifetime = 1.0f;
 
     public GameObject retreatDashEffectPrefab;
     public Vector3 retreatDashEffectOffset;
     public Vector3 retreatDashEffectScale;
+    public float retreatDashEffectLifetime = 1.0f;
+
+    // --- AI Timing ---
+    [Header("AI Timing")]
+    public float attackPause = 0.35f; // пауза между атаками и манёврами
 
     // --- Внутренние переменные ---
     private bool isDead = false;
@@ -123,6 +134,7 @@ public class MeleeEnemyAI : EnemyTeleportController
     private LayerMask groundLayer;
     private Rigidbody2D rb;
     private Transform player;
+    private bool isBusy = false;
 
     // --- Адаптация к игроку ---
     private int playerParryCount = 0;
@@ -406,7 +418,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             Vector3 targetPos = player.position + silhouetteOffset;
             var silhouette = Instantiate(teleportSilhouettePrefab, targetPos + teleportSilhouetteOffset, Quaternion.identity);
             silhouette.transform.localScale = teleportSilhouetteScale;
-            Destroy(silhouette, chargeTime + 0.1f);
+            Destroy(silhouette, teleportSilhouetteLifetime);
         }
 
         yield return new WaitForSeconds(chargeTime);
@@ -426,7 +438,8 @@ public class MeleeEnemyAI : EnemyTeleportController
     // --- Бой и манёвры ---
     IEnumerator MeleeComboAttackRoutine()
     {
-        if (currentState != State.Pursuing) yield break;
+        if (isBusy || currentState != State.Pursuing) yield break;
+        isBusy = true;
         currentState = State.MeleeComboAttacking;
         SetInvulnerable(false);
 
@@ -450,6 +463,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                     currentState = State.Pursuing;
                     SetInvulnerable(true);
                     DisableAllHitboxes();
+                    isBusy = false;
                     OnAttackEnded?.Invoke();
                     yield break;
                 }
@@ -459,6 +473,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                     currentState = State.Pursuing;
                     SetInvulnerable(true);
                     DisableAllHitboxes();
+                    isBusy = false;
                     OnAttackEnded?.Invoke();
                     yield break;
                 }
@@ -474,6 +489,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
             if (currentState == State.Stunned || isDead)
             {
+                isBusy = false;
                 OnAttackEnded?.Invoke();
                 yield break;
             }
@@ -492,6 +508,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 var fx = Instantiate(comboAttackEffectPrefabs[i], pos, Quaternion.identity, transform);
                 if (comboAttackEffectScales != null && i < comboAttackEffectScales.Length)
                     fx.transform.localScale = comboAttackEffectScales[i];
+                Destroy(fx, comboAttackEffectLifetime);
             }
 
             yield return new WaitForSeconds(0.15f + Random.Range(-0.05f, 0.05f));
@@ -502,12 +519,15 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         SetInvulnerable(true);
         currentState = State.Pursuing;
+        yield return new WaitForSeconds(attackPause); // пауза
+        isBusy = false;
         OnAttackEnded?.Invoke();
     }
 
     IEnumerator DashAttackRoutine()
     {
-        if (currentState != State.Pursuing) yield break;
+        if (isBusy || currentState != State.Pursuing) yield break;
+        isBusy = true;
         currentState = State.Dashing;
         SetInvulnerable(true);
 
@@ -522,13 +542,12 @@ public class MeleeEnemyAI : EnemyTeleportController
                     if (dashAttackEffectOffsets != null && i < dashAttackEffectOffsets.Length)
                         offset = dashAttackEffectOffsets[i];
 
-                    // Инвертируем X-ось смещения, если персонаж смотрит влево
                     if (!facingRight)
                         offset.x = -offset.x;
 
                     Vector3 pos = transform.position + offset;
                     var fx = Instantiate(dashAttackEffectPrefabs[i], pos, Quaternion.identity, transform);
-                    if (dashAttackEffectScales != null && i < dashAttackEffectScales.Length)
+                    if (fx != null && dashAttackEffectScales != null && i < dashAttackEffectScales.Length)
                         fx.transform.localScale = dashAttackEffectScales[i];
                 }
             }
@@ -554,12 +573,15 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         SetInvulnerable(false);
         currentState = State.Pursuing;
+        yield return new WaitForSeconds(0.2f); // пауза между атаками
+        isBusy = false;
         OnAttackEnded?.Invoke();
     }
 
     IEnumerator DashBehindAndAttackRoutine()
     {
-        if (currentState != State.Pursuing) yield break;
+        if (isBusy || currentState != State.Pursuing) yield break;
+        isBusy = true;
         currentState = State.EvasionDashing;
         SetInvulnerable(true);
 
@@ -576,6 +598,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 offset.x = -offset.x;
             var fx = Instantiate(evasionDashEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = evasionDashEffectScale;
+            Destroy(fx, evasionDashEffectLifetime);
         }
 
         yield return new WaitForSeconds(evasionDashDuration);
@@ -584,6 +607,8 @@ public class MeleeEnemyAI : EnemyTeleportController
         SetInvulnerable(false);
 
         yield return DashAttackRoutine();
+        yield return new WaitForSeconds(attackPause); // пауза
+        isBusy = false;
     }
 
     IEnumerator FeintAttackRoutine()
@@ -620,6 +645,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 offset.x = -offset.x;
             var fx = Instantiate(evasionDashEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = evasionDashEffectScale;
+            Destroy(fx, evasionDashEffectLifetime);
         }
 
         while (timer < evasionDashDuration)
@@ -634,8 +660,11 @@ public class MeleeEnemyAI : EnemyTeleportController
 
     IEnumerator UnpredictableMoveRoutine()
     {
+        if (isBusy) yield break;
+        isBusy = true;
         currentState = State.EvasionDashing;
         SetInvulnerable(true);
+
         float timer = 0f;
         Vector2 dir = Random.value < 0.5f ? Vector2.right : Vector2.left;
         Flip(dir.x);
@@ -648,6 +677,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 offset.x = -offset.x;
             var fx = Instantiate(evasionDashEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = evasionDashEffectScale;
+            Destroy(fx, evasionDashEffectLifetime);
         }
 
         while (timer < evasionDashDuration * 0.7f)
@@ -656,14 +686,20 @@ public class MeleeEnemyAI : EnemyTeleportController
             yield return null;
         }
         rb.linearVelocity = Vector2.zero;
+
         SetInvulnerable(false);
         currentState = State.Pursuing;
+        yield return new WaitForSeconds(attackPause); // пауза
+        isBusy = false;
     }
 
     IEnumerator RetreatDashRoutine()
     {
+        if (isBusy) yield break;
+        isBusy = true;
         currentState = State.Retreating;
         SetInvulnerable(false);
+
         float direction = Mathf.Sign(transform.position.x - player.position.x);
         Flip(direction);
         float timer = 0f;
@@ -676,6 +712,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 offset.x = -offset.x;
             var fx = Instantiate(retreatDashEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = retreatDashEffectScale;
+            Destroy(fx, retreatDashEffectLifetime);
         }
 
         while (timer < retreatDashDuration)
@@ -684,9 +721,12 @@ public class MeleeEnemyAI : EnemyTeleportController
             yield return null;
         }
         rb.linearVelocity = Vector2.zero;
+
         lastRetreatTime = Time.time;
         currentState = State.Pursuing;
         SetInvulnerable(true);
+        yield return new WaitForSeconds(attackPause); // пауза
+        isBusy = false;
     }
 
     IEnumerator ParryProjectileWindow(float duration)
@@ -697,6 +737,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             if (!facingRight) offset.x = -offset.x;
             var fx = Instantiate(parryStartEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = parryStartEffectScale;
+            Destroy(fx, parryStartEffectLifetime);
         }
 
         if (parryProjectileHitbox != null)
@@ -716,6 +757,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             timer += Time.deltaTime;
             yield return null;
         }
+        yield return new WaitForSeconds(0.2f); // или другое подходящее значение
         currentState = State.Pursuing;
     }
 
@@ -769,6 +811,7 @@ public class MeleeEnemyAI : EnemyTeleportController
             if (!facingRight) offset.x = -offset.x;
             var fx = Instantiate(parryStartEffectPrefab, transform.position + offset, Quaternion.identity, transform);
             fx.transform.localScale = parryStartEffectScale;
+            Destroy(fx, parryStartEffectLifetime);
         }
 
         var playerObj = GameObject.FindGameObjectWithTag("Player");
@@ -790,6 +833,7 @@ public class MeleeEnemyAI : EnemyTeleportController
                 successOffset.x = -successOffset.x;
             var fx = Instantiate(parrySuccessEffectPrefab, transform.position + successOffset, Quaternion.identity, transform);
             fx.transform.localScale = parrySuccessEffectScale;
+            Destroy(fx, parrySuccessEffectLifetime);
         }
 
         if (currentState == State.MeleeComboAttacking ||
