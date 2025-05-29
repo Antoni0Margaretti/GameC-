@@ -298,20 +298,21 @@ public class CombatController : MonoBehaviour
     IEnumerator PerformDashAttackDamage()
     {
         isDashAttacking = true;
-
-        // Выбор эффекта в зависимости от типа рывка
-        int dashIdx = 0;
-        // Например, если у вас есть особый dash, можно добавить условие:
-        // if (isSpecialDash) dashIdx = 1;
-
-        if (dashEffectPrefabs != null && dashIdx < dashEffectPrefabs.Length && dashEffectPrefabs[dashIdx] != null)
+        // Активировать все эффекты рывка
+        if (dashEffectPrefabs != null)
         {
-            Vector3 pos = transform.position;
-            if (dashEffectOffsets != null && dashIdx < dashEffectOffsets.Length)
-                pos += dashEffectOffsets[dashIdx];
-            var fx = Instantiate(dashEffectPrefabs[dashIdx], pos, Quaternion.identity, transform);
-            if (dashEffectScales != null && dashIdx < dashEffectScales.Length)
-                fx.transform.localScale = dashEffectScales[dashIdx];
+            for (int i = 0; i < dashEffectPrefabs.Length; i++)
+            {
+                if (dashEffectPrefabs[i] != null)
+                {
+                    Vector3 pos = transform.position;
+                    if (dashEffectOffsets != null && i < dashEffectOffsets.Length)
+                        pos += dashEffectOffsets[i];
+                    var fx = Instantiate(dashEffectPrefabs[i], pos, Quaternion.identity, transform);
+                    if (dashEffectScales != null && i < dashEffectScales.Length)
+                        fx.transform.localScale = dashEffectScales[i];
+                }
+            }
         }
 
         if (dashAttackHitbox != null)

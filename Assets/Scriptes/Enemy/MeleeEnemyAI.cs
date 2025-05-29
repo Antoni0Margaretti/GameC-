@@ -487,18 +487,21 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.Dashing;
         SetInvulnerable(true);
 
-        int dashIdx = 0;
-        // Например, если у вас есть логика для выбора второго эффекта:
-        // if (isAggressiveDash) dashIdx = 1;
-
-        if (dashAttackEffectPrefabs != null && dashIdx < dashAttackEffectPrefabs.Length && dashAttackEffectPrefabs[dashIdx] != null)
+        // Активировать все эффекты атакующего рывка
+        if (dashAttackEffectPrefabs != null)
         {
-            Vector3 pos = transform.position;
-            if (dashAttackEffectOffsets != null && dashIdx < dashAttackEffectOffsets.Length)
-                pos += dashAttackEffectOffsets[dashIdx];
-            var fx = Instantiate(dashAttackEffectPrefabs[dashIdx], pos, Quaternion.identity, transform);
-            if (dashAttackEffectScales != null && dashIdx < dashAttackEffectScales.Length)
-                fx.transform.localScale = dashAttackEffectScales[dashIdx];
+            for (int i = 0; i < dashAttackEffectPrefabs.Length; i++)
+            {
+                if (dashAttackEffectPrefabs[i] != null)
+                {
+                    Vector3 pos = transform.position;
+                    if (dashAttackEffectOffsets != null && i < dashAttackEffectOffsets.Length)
+                        pos += dashAttackEffectOffsets[i];
+                    var fx = Instantiate(dashAttackEffectPrefabs[i], pos, Quaternion.identity, transform);
+                    if (dashAttackEffectScales != null && i < dashAttackEffectScales.Length)
+                        fx.transform.localScale = dashAttackEffectScales[i];
+                }
+            }
         }
 
         ShowExclamation();
