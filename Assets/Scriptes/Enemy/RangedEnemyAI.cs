@@ -20,7 +20,7 @@ public class RangedEnemyAI : EnemyTeleportController
     public LayerMask obstacleMask;
 
     [Header("Movement Settings")]
-    public float moveSpeed = 2f;
+    public float moveSpeed = 2f; 
     public float retreatSpeed = 1.5f;
     public float retreatDistance = 3.5f;
     public float retreatCooldown = 3f;
