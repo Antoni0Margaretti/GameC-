@@ -2,10 +2,35 @@ using UnityEngine;
 
 public class AutoDestroyVFX : MonoBehaviour
 {
-    public float lifetime = 1.0f; // выставьте под длину анимации
+    private ParticleSystem ps;
+
+    void Awake()
+    {
+        ps = GetComponent<ParticleSystem>();
+    }
 
     void Start()
     {
-        Destroy(gameObject, lifetime);
+        if (ps == null)
+            ps = GetComponent<ParticleSystem>();
+        if (ps != null)
+            Destroy(gameObject, ps.main.duration);
+        else
+            Destroy(gameObject, 1f);
+    }
+
+    public void PlayAndAutoDestroy()
+    {
+        if (ps == null)
+            ps = GetComponent<ParticleSystem>();
+        if (ps != null)
+        {
+            ps.Play();
+            Destroy(gameObject, ps.main.duration);
+        }
+        else
+        {
+            Destroy(gameObject, 1f);
+        }
     }
 }

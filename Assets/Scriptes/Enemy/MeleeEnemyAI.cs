@@ -402,8 +402,8 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (teleportSilhouettePrefab != null)
         {
-            Vector3 offset = Vector3.right * Random.Range(-1.5f, 1.5f);
-            Vector3 targetPos = player.position + offset;
+            Vector3 silhouetteOffset = Vector3.right * Random.Range(-1.5f, 1.5f);
+            Vector3 targetPos = player.position + silhouetteOffset;
             var silhouette = Instantiate(teleportSilhouettePrefab, targetPos + teleportSilhouetteOffset, Quaternion.identity);
             silhouette.transform.localScale = teleportSilhouetteScale;
             Destroy(silhouette, chargeTime + 0.1f);
@@ -411,8 +411,8 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         yield return new WaitForSeconds(chargeTime);
 
-        Vector3 offset = Vector3.right * Random.Range(-1.5f, 1.5f);
-        transform.position = player.position + offset;
+        Vector3 teleportOffset = Vector3.right * Random.Range(-1.5f, 1.5f);
+        transform.position = player.position + teleportOffset;
         lastTeleportTime = Time.time;
         isTeleporting = false;
     }
@@ -785,10 +785,10 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (parrySuccessEffectPrefab != null)
         {
-            Vector3 offset = parrySuccessEffectOffset;
+            Vector3 successOffset = parrySuccessEffectOffset;
             if (!facingRight)
-                offset.x = -offset.x;
-            var fx = Instantiate(parrySuccessEffectPrefab, transform.position + offset, Quaternion.identity, transform);
+                successOffset.x = -successOffset.x;
+            var fx = Instantiate(parrySuccessEffectPrefab, transform.position + successOffset, Quaternion.identity, transform);
             fx.transform.localScale = parrySuccessEffectScale;
         }
 
