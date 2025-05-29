@@ -20,7 +20,7 @@ public class EnemyState
     public bool JumpUsed;
 }
 
-public class ActionBasedPathfinder : MonoBehaviour
+public class ActionBasedPathfinder : MonoBehaviour 
 {
     public float moveSpeed = 3f;
     public float jumpForce = 7f;
