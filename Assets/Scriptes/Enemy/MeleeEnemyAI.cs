@@ -541,7 +541,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (evasionDashEffectPrefab != null)
         {
-            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform); // transform — это transform персонажа
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform);
             fx.transform.localScale = evasionDashEffectScale;
         }
 
@@ -582,7 +582,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (evasionDashEffectPrefab != null)
         {
-            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform); // transform — это transform персонажа
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform);
             fx.transform.localScale = evasionDashEffectScale;
         }
 
@@ -607,7 +607,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (evasionDashEffectPrefab != null)
         {
-            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform); // transform — это transform персонажа
+            var fx = Instantiate(evasionDashEffectPrefab, transform.position + evasionDashEffectOffset, Quaternion.identity, transform);
             fx.transform.localScale = evasionDashEffectScale;
         }
 
@@ -632,7 +632,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (retreatDashEffectPrefab != null)
         {
-            var fx = Instantiate(retreatDashEffectPrefab, transform.position + retreatDashEffectOffset, Quaternion.identity, transform); // transform — это transform персонажа
+            var fx = Instantiate(retreatDashEffectPrefab, transform.position + retreatDashEffectOffset, Quaternion.identity, transform);
             fx.transform.localScale = retreatDashEffectScale;
         }
 
@@ -694,7 +694,7 @@ public class MeleeEnemyAI : EnemyTeleportController
         Vector2 stepOrigin = origin + Vector2.up * stepHeight;
         RaycastHit2D hitHigh = Physics2D.Raycast(stepOrigin, dir, 0.2f, groundLayer);
         return hitHigh.collider == null;
-    }
+        }
 
     private bool CanJump()
     {
@@ -727,7 +727,7 @@ public class MeleeEnemyAI : EnemyTeleportController
 
         if (parrySuccessEffectPrefab != null)
         {
-            var fx = Instantiate(parrySuccessEffectPrefab, transform.position + parrySuccessEffectOffset, Quaternion.identity, transform); // transform — это transform персонажа
+            var fx = Instantiate(parrySuccessEffectPrefab, transform.position + parrySuccessEffectOffset, Quaternion.identity, transform);
             fx.transform.localScale = parrySuccessEffectScale;
         }
 
@@ -930,7 +930,7 @@ public class MeleeEnemyAI : EnemyTeleportController
     {
         if (exclamationPrefab != null && exclamationInstance == null)
         {
-            exclamationInstance = Instantiate(exclamationPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity, transform); // transform — это transform персонажа
+            exclamationInstance = Instantiate(exclamationPrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity, transform);
         }
     }
 
