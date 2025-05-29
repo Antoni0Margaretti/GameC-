@@ -337,8 +337,34 @@ public class MeleeEnemyAI : EnemyTeleportController
     private void MoveTowardsPlayer()
     {
         if (currentState != State.Pursuing) return;
+
         float dir = Mathf.Sign(player.position.x - transform.position.x);
         Flip(dir);
+
+        // Проверка препятствий
+        if (IsObstacleAhead())
+        {
+            // Сначала пробуем перешагнуть
+            if (CanStepOver())
+            {
+                StartCoroutine(StepOverRoutine());
+                return;
+            }
+            // Если нельзя перешагнуть — пробуем прыгнуть
+            else if (CanJump())
+            {
+                StartCoroutine(JumpRoutine());
+                return;
+            }
+            // Если нельзя ни то, ни другое — останавливаемся
+            else
+            {
+                rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+                return;
+            }
+        }
+
+        // Если путь свободен — двигаемся к игроку
         rb.linearVelocity = new Vector2(dir * moveSpeed, rb.linearVelocity.y);
     }
 
@@ -461,13 +487,16 @@ public class MeleeEnemyAI : EnemyTeleportController
         currentState = State.Dashing;
         SetInvulnerable(true);
 
-        int dashIdx = 0; // или 1, если нужен второй вариант
+        int dashIdx = 0;
+        // Например, если у вас есть логика для выбора второго эффекта:
+        // if (isAggressiveDash) dashIdx = 1;
+
         if (dashAttackEffectPrefabs != null && dashIdx < dashAttackEffectPrefabs.Length && dashAttackEffectPrefabs[dashIdx] != null)
         {
             Vector3 pos = transform.position;
             if (dashAttackEffectOffsets != null && dashIdx < dashAttackEffectOffsets.Length)
                 pos += dashAttackEffectOffsets[dashIdx];
-            var fx = Instantiate(dashAttackEffectPrefabs[dashIdx], pos, Quaternion.identity, transform); // transform — это transform персонажа
+            var fx = Instantiate(dashAttackEffectPrefabs[dashIdx], pos, Quaternion.identity, transform);
             if (dashAttackEffectScales != null && dashIdx < dashAttackEffectScales.Length)
                 fx.transform.localScale = dashAttackEffectScales[dashIdx];
         }

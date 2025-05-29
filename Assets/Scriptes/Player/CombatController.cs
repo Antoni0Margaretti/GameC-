@@ -298,8 +298,12 @@ public class CombatController : MonoBehaviour
     IEnumerator PerformDashAttackDamage()
     {
         isDashAttacking = true;
-        // Воспроизвести эффект рывка (например, первый вариант)
-        int dashIdx = 0; // или другой индекс, если нужно
+
+        // Выбор эффекта в зависимости от типа рывка
+        int dashIdx = 0;
+        // Например, если у вас есть особый dash, можно добавить условие:
+        // if (isSpecialDash) dashIdx = 1;
+
         if (dashEffectPrefabs != null && dashIdx < dashEffectPrefabs.Length && dashEffectPrefabs[dashIdx] != null)
         {
             Vector3 pos = transform.position;
